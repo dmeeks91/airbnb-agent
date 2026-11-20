@@ -1,0 +1,36 @@
+From: Jordan Taylor via Airbnb <express@airbnb.com>
+Reply-To: reply-thread-abc123@reply.airbnb.com
+To: host@example.com
+Subject: RE: Inquiry for Sunny 2BR near Carytown & VMFA - May 14 - 17, 2026
+Date: Tue, 12 May 2026 14:22:00 +0000
+Message-ID: <inquiry-sample-001@mail.airbnb.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="boundary-inquiry"
+
+--boundary-inquiry
+Content-Type: text/plain; charset="UTF-8"
+
+Jordan Taylor sent you a message
+
+Hi there! We are coming in for graduation weekend May 14 - 17, 2026.
+Is there any chance you can do $600 total for the 3 nights? Also is there free parking on the street?
+
+Respond to Jordan Taylor by replying directly to this email or on Airbnb:
+https://www.airbnb.com/hosting/thread/987654321
+
+Listing: https://www.airbnb.com/rooms/11223344
+
+Airbnb, Inc., 888 Brannan St, San Francisco, CA 94103
+--boundary-inquiry
+Content-Type: text/html; charset="UTF-8"
+
+<html>
+  <body>
+    <p>Jordan Taylor sent you a message</p>
+    <p>Hi there! We are coming in for graduation weekend May 14 - 17, 2026.<br/>
+    Is there any chance you can do $600 total for the 3 nights? Also is there free parking on the street?</p>
+    <a href="https://www.airbnb.com/hosting/thread/987654321">Reply on Airbnb</a>
+    <a href="https://www.airbnb.com/rooms/11223344">View listing</a>
+  </body>
+</html>
+--boundary-inquiry--

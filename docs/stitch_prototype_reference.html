@@ -1,0 +1,2210 @@
+<!-- REFERENCE ONLY: Extracted from Stitch project "Co-Host Guest Relay UX" (Interactive Workflow Prototype). Follow docs/DESIGN.md and docs/IMPLEMENTATION_PLAN.md wherever V1 overrides older prototype items (no prototype bar, no claim/release locks, Paste/PDF/One-liner import instead of Airbnb URL scraping, lucide-react icons). -->
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Haven — Interactive Workflow Prototype</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script id="tailwind-config" data-stitch-original-src="b4c9f01ed2d710ae===../../tailwind.config.js">/** @type {import('tailwindcss').Config} */
+globalThis.tailwind = globalThis.tailwind || {};
+globalThis.tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        'property-a': '#095C57',
+        'property-b': '#8C4A00',
+        'property-c': '#7F2A44',
+        'warning': '#8C4000',
+        'warning-surface': '#FEF3C7',
+        'success': '#166534',
+        'success-surface': '#DCFCE7',
+        'info': '#1D4ED8',
+        'info-surface': '#DBEAFE',
+        'claimed-host-a': '#3730A3',
+        'claimed-host-b': '#0F766E',
+        'light-primary': '#0F172A',
+        'light-on-primary': '#FFFFFF',
+        'light-primary-container': '#F1F5F9',
+        'light-on-primary-container': '#0F172A',
+        'light-secondary': '#334155',
+        'light-on-secondary': '#FFFFFF',
+        'light-secondary-container': '#E2E8F0',
+        'light-on-secondary-container': '#1E293B',
+        'light-tertiary': '#7C2D12',
+        'light-on-tertiary': '#FFFFFF',
+        'light-tertiary-container': '#FFEDD5',
+        'light-on-tertiary-container': '#7C2D12',
+        'light-surface': '#FAFAF9',
+        'light-on-surface': '#0F172A',
+        'light-surface-container-low': '#F5F5F4',
+        'light-surface-container': '#E7E5E4',
+        'light-surface-container-high': '#D6D3D1',
+        'light-outline': '#57534E',
+        'light-outline-variant': '#D6D3D1',
+      },
+      borderRadius: {
+        'sm': '6px',
+        'DEFAULT': '10px',
+        'md': '12px',
+        'lg': '16px',
+        'xl': '20px',
+        'full': '9999px',
+      },
+      spacing: {
+        'gutter-xs': '4px',
+        'gutter-sm': '8px',
+        'gutter-md': '12px',
+        'gutter-lg': '16px',
+        'gutter-xl': '24px',
+        'section': '32px',
+        'page-margin': '16px',
+      },
+      fontFamily: {
+        'display': ['"Alata"', 'sans-serif'],
+        'headline': ['"Alata"', 'sans-serif'],
+        'body': ['"Instrument Sans"', 'sans-serif'],
+        'label': ['"Instrument Sans"', 'sans-serif'],
+        'code': ['"Source Code Pro"', 'monospace'],
+      },
+      fontSize: {
+        'display-lg': ['34px', { lineHeight: '40px', letterSpacing: '-0.2px', fontWeight: '400' }],
+        'display-lg-mobile': ['28px', { lineHeight: '34px', letterSpacing: '-0.2px', fontWeight: '400' }],
+        'headline-lg': ['24px', { lineHeight: '30px', letterSpacing: '-0.1px', fontWeight: '400' }],
+        'headline-md': ['20px', { lineHeight: '26px', letterSpacing: '0px', fontWeight: '400' }],
+        'headline-sm': ['17px', { lineHeight: '22px', letterSpacing: '0px', fontWeight: '400' }],
+        'body-lg': ['16px', { lineHeight: '24px', letterSpacing: '0.1px', fontWeight: '400' }],
+        'body-md': ['14px', { lineHeight: '20px', letterSpacing: '0.15px', fontWeight: '400' }],
+        'body-sm': ['12px', { lineHeight: '16px', letterSpacing: '0.2px', fontWeight: '400' }],
+        'label-lg': ['14px', { lineHeight: '20px', letterSpacing: '0.1px', fontWeight: '600' }],
+        'label-md': ['12px', { lineHeight: '16px', letterSpacing: '0.2px', fontWeight: '600' }],
+        'label-sm': ['11px', { lineHeight: '14px', letterSpacing: '0.3px', fontWeight: '600' }],
+        'code-sm': ['12px', { lineHeight: '16px', letterSpacing: '0px', fontWeight: '500' }],
+      },
+      transitionDuration: {
+        'state-change': '120ms',
+        'surface-enter': '200ms',
+        'surface-exit': '150ms',
+      },
+      transitionDelay: {
+        'state-change': '0ms',
+        'surface-enter': '0ms',
+        'surface-exit': '0ms',
+      },
+      transitionTimingFunction: {
+        'state-change': 'ease-out',
+        'surface-enter': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        'surface-exit': 'cubic-bezier(0.4, 0, 1, 1)',
+      },
+    },
+  },
+};
+if (typeof module !== 'undefined') module.exports = globalThis.tailwind.config;
+</script>
+  <link href="https://fonts.googleapis.com/css2?family=Alata&amp;family=Instrument+Sans:wght@400;500;600&amp;family=Source+Code+Pro:wght@500&amp;display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet">
+  <style>
+    .material-symbols-outlined, .material-symbols-rounded, .material-symbols-sharp, .material-icons {
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      line-height: 1 !important;
+      box-sizing: content-box;
+      overflow: hidden;
+      white-space: nowrap;
+      direction: ltr;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body class="bg-light-surface text-light-on-surface font-body antialiased">
+  <div class="min-h-screen flex flex-col max-w-[420px] mx-auto bg-light-surface border-x border-light-outline-variant shadow-sm relative pb-20 select-none">
+
+    <!-- Prototype Journey Breadcrumb Bar -->
+    <div class="bg-light-primary text-light-on-primary px-3 py-1.5 flex items-center justify-between text-[11px] font-label sticky top-0 z-50 shadow-xs">
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="w-1.5 h-1.5 rounded-full bg-teal-300"></span>
+        <span class="text-slate-300">Views:</span>
+        <button type="button" onclick="goToStep(&#39;queue&#39;)" id="stepPillQueue" class="px-1.5 py-0.5 rounded text-slate-300 hover:text-white">Messages</button>
+        <button type="button" onclick="goToStep(&#39;thread&#39;)" id="stepPillThread" class="px-1.5 py-0.5 rounded bg-white/20 text-white font-semibold">Full Thread</button>
+        <button type="button" onclick="goToStep(&#39;dialogue&#39;)" id="stepPillDialogue" class="px-1.5 py-0.5 rounded text-slate-300 hover:text-white">AI Reply</button>
+        <button type="button" onclick="goToStep(&#39;house-details&#39;)" id="stepPillHouseDetails" class="px-1.5 py-0.5 rounded text-slate-300 hover:text-white">House Details</button>
+        <button type="button" onclick="goToStep(&#39;import&#39;)" id="stepPillImport" class="px-1.5 py-0.5 rounded text-slate-300 hover:text-white">Import</button>
+        <button type="button" onclick="goToStep(&#39;account&#39;)" id="stepPillAccount" class="px-1.5 py-0.5 rounded text-slate-300 hover:text-white">Account</button>
+      </div>
+    </div>
+
+    <!-- Android Status Bar Emulation -->
+    <div class="h-6 px-4 flex items-center justify-between text-light-secondary text-[11px] font-code bg-light-surface">
+      <span>09:44</span>
+      <div class="flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[13px]">wifi</span>
+        <span class="material-symbols-outlined text-[13px]">signal_cellular_alt</span>
+        <span class="material-symbols-outlined text-[15px]">battery_full</span>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- STEP 1: MESSAGES QUEUE VIEW -->
+    <!-- ========================================== -->
+    <div id="viewQueue" class="flex flex-col flex-1 gap-2.5 hidden">
+      <!-- App Header with Interactive Property Selector Dropdown -->
+      <header class="px-4 py-3 border-b border-light-outline-variant bg-light-surface sticky top-8 z-20 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-light-primary text-light-on-primary flex items-center justify-center font-headline text-[15px] shrink-0">
+            H
+          </div>
+          <div>
+            <h1 class="font-headline text-headline-sm text-light-on-surface leading-tight">Haven Co-Host</h1>
+            <div class="flex items-center gap-1.5 text-body-sm text-light-secondary">
+              <span id="queuePropDot" class="w-2 h-2 rounded-full bg-property-a"></span>
+              <span id="queuePropSubtitle" class="font-label text-label-sm text-property-a font-semibold">Property A • Coastal Loft</span>
+              <span class="text-light-outline">•</span>
+              <span class="text-body-sm text-light-secondary font-code text-[11px]">Synced 1m ago</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Property Switcher Button -->
+        <div class="relative">
+          <button type="button" onclick="togglePropMenu()" class="relative w-8 h-8 rounded-full bg-light-surface-container-low border border-light-outline-variant text-light-secondary flex items-center justify-center hover:bg-light-surface-container active:scale-95 transition shadow-xs" title="Switch Property">
+            <span class="material-symbols-outlined text-[18px]">apartment</span>
+            <span id="switchAlertBadge" class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-warning text-white text-[9px] font-code font-bold flex items-center justify-center border border-white">1</span>
+          </button>
+
+          <!-- Dropdown Popover -->
+          <div id="propDropdown" class="absolute right-0 top-10 w-64 bg-white rounded-lg border border-light-outline-variant shadow-xl p-2 z-50 flex flex-col gap-1 transition-all hidden">
+            <div class="px-2 py-1 text-[11px] font-label text-light-secondary uppercase tracking-wider border-b border-light-outline-variant/60 flex items-center justify-between">
+              <span>Switch Property</span>
+              <span class="font-code text-light-outline">2 active</span>
+            </div>
+
+            <!-- Option A: Coastal Loft -->
+            <button type="button" onclick="switchActiveProperty(&#39;A&#39;)" id="btnPropA" class="w-full flex items-center justify-between p-2 rounded-md transition text-left bg-teal-50 border border-teal-200">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-property-a shrink-0"></span>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-label text-label-md text-property-a block">Property A</span>
+                    <span class="px-1.5 py-0.2 rounded-full bg-teal-100 text-property-a font-code text-[10px] font-semibold">1 draft</span>
+                  </div>
+                  <span class="text-[11px] text-light-secondary block">Coastal Loft (Marcus L.)</span>
+                </div>
+              </div>
+              <span id="checkIconA" class="material-symbols-outlined text-property-a text-[18px]">check</span>
+            </button>
+
+            <!-- Option B: Mountain Chalet -->
+            <button type="button" onclick="switchActiveProperty(&#39;B&#39;)" id="btnPropB" class="w-full flex items-center justify-between p-2 rounded-md transition text-left border border-transparent hover:bg-light-surface-container-low">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-property-b shrink-0"></span>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-label text-label-md text-light-on-surface block">Property B</span>
+                    <span class="px-1.5 py-0.2 rounded-full bg-amber-100 text-property-b font-code text-[10px] font-semibold">1 review</span>
+                  </div>
+                  <span class="text-[11px] text-light-secondary block">Mountain Chalet (Sarah K.)</span>
+                </div>
+              </div>
+              <span id="checkIconB" class="material-symbols-outlined text-property-b text-[18px] hidden">check</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Search & Filter Controls -->
+      <div class="px-4 pt-1.5 pb-1 bg-light-surface sticky top-14 z-10 border-b border-light-outline-variant/40">
+        <div class="relative flex items-center">
+          <!-- Leading Magnifying Glass Icon -->
+          <span class="material-symbols-outlined absolute left-3 text-light-secondary text-[18px] pointer-events-none">search</span>
+
+          <!-- Search Input with padding for embedded icons -->
+          <input id="searchInput" type="text" placeholder="Search guests, messages, or topics..." oninput="handleSearchInput(this.value)" class="w-full pl-9 pr-24 py-2 bg-light-surface-container-low border border-light-outline-variant rounded-full text-body-sm text-light-on-surface placeholder:text-light-secondary/60 focus:bg-white focus:border-light-primary focus:ring-1 focus:ring-light-primary outline-hidden transition shadow-xs">
+
+          <!-- Clear Button (visible when typing) -->
+          <button id="searchClearBtn" type="button" onclick="clearSearch()" class="hidden absolute right-20 w-5 h-5 rounded-full bg-light-surface-container text-light-secondary hover:text-light-on-surface items-center justify-center transition" title="Clear search" aria-label="Clear search">
+            <span class="material-symbols-outlined text-[13px]">close</span>
+          </button>
+
+          <!-- Embedded Filter Button tucked into right edge -->
+          <button id="filterBtn" type="button" onclick="toggleFilterPopover()" class="absolute right-1.5 px-2.5 py-1 rounded-full bg-white border border-light-outline-variant text-light-secondary hover:text-light-on-surface hover:border-light-primary text-[11px] font-label flex items-center gap-1 shadow-xs transition active:scale-95" aria-expanded="false" aria-controls="filterPopover">
+            <span class="material-symbols-outlined text-[14px]">tune</span>
+            <span>Filter</span>
+            <span id="activeFilterPill" class="hidden w-3.5 h-3.5 rounded-full bg-light-primary text-light-on-primary text-[9px] font-code font-bold items-center justify-center">1</span>
+            <span class="material-symbols-outlined text-[13px] text-light-secondary">expand_more</span>
+          </button>
+        </div>
+
+        <!-- Quick Filter Popover Directly Beneath Search Bar -->
+        <div id="filterPopover" class="hidden mt-2 p-3 bg-white rounded-lg border border-light-outline-variant shadow-lg flex flex-col gap-2.5 animate-in fade-in duration-100">
+          <!-- Status Filter Row -->
+          <div class="flex flex-col gap-1.5">
+            <span class="text-[10px] font-label text-light-secondary uppercase tracking-wider font-semibold">Message Status</span>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <button type="button" onclick="setQuickFilter(&#39;status&#39;, &#39;all&#39;)" class="filter-chip filter-status px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-light-primary text-light-on-primary border border-light-primary" data-val="all">All</button>
+              <button type="button" onclick="setQuickFilter(&#39;status&#39;, &#39;needs-reply&#39;)" class="filter-chip filter-status px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-white text-light-secondary border border-light-outline-variant hover:border-light-primary" data-val="needs-reply">Needs Reply</button>
+              <button type="button" onclick="setQuickFilter(&#39;status&#39;, &#39;flagged&#39;)" class="filter-chip filter-status px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-white text-light-secondary border border-light-outline-variant hover:border-light-primary" data-val="flagged">Flagged</button>
+              <button type="button" onclick="setQuickFilter(&#39;status&#39;, &#39;sent&#39;)" class="filter-chip filter-status px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-white text-light-secondary border border-light-outline-variant hover:border-light-primary" data-val="sent">Sent</button>
+            </div>
+          </div>
+
+          <!-- Guest Stage Filter Row -->
+          <div class="flex flex-col gap-1.5 pt-1.5 border-t border-light-outline-variant/50">
+            <span class="text-[10px] font-label text-light-secondary uppercase tracking-wider font-semibold">Guest Stage</span>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <button type="button" onclick="setQuickFilter(&#39;stage&#39;, &#39;all&#39;)" class="filter-chip filter-stage px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-light-primary text-light-on-primary border border-light-primary" data-val="all">All</button>
+              <button type="button" onclick="setQuickFilter(&#39;stage&#39;, &#39;inquiry&#39;)" class="filter-chip filter-stage px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-white text-light-secondary border border-light-outline-variant hover:border-light-primary" data-val="inquiry">Inquiry</button>
+              <button type="button" onclick="setQuickFilter(&#39;stage&#39;, &#39;confirmed&#39;)" class="filter-chip filter-stage px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-white text-light-secondary border border-light-outline-variant hover:border-light-primary" data-val="confirmed">Confirmed</button>
+              <button type="button" onclick="setQuickFilter(&#39;stage&#39;, &#39;current&#39;)" class="filter-chip filter-stage px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-white text-light-secondary border border-light-outline-variant hover:border-light-primary" data-val="current">Current Guest</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Messages Queue Cards -->
+      <main class="px-4 py-1 flex flex-col gap-3.5 flex-1">
+
+        <!-- PROPERTY A: MARCUS L. (ACTIVE INQUIRY CARD) -->
+        <div id="cardMarcusSection" data-status="drafted" data-stage="confirmed" data-search="marcus coastal loft bag drop travel crib bedroom" onclick="openGuestJourney(&#39;marcus&#39;)" class="bg-white rounded-lg border border-property-a/60 hover:border-property-a p-4 shadow-sm flex flex-col gap-3 relative overflow-hidden transition-all active:scale-[0.98] cursor-pointer ring-1 ring-property-a/20">
+          <div class="absolute top-0 left-0 bottom-0 w-1.5 bg-property-a"></div>
+
+          <!-- Single Line Header -->
+          <div class="flex items-center justify-between pl-1">
+            <div class="flex items-center gap-1.5">
+              <span class="w-6 h-6 rounded-full bg-teal-50 text-property-a flex items-center justify-center border border-teal-200">
+                <span class="material-symbols-outlined text-[15px]">auto_fix_high</span>
+              </span>
+              <span class="font-label text-label-md text-light-on-surface">Marcus L. (Nov 21 – 25)</span>
+            </div>
+            <div class="flex items-center gap-1 text-light-secondary">
+              <span class="text-body-sm font-code">3m ago</span>
+              <span class="material-symbols-outlined text-[18px] text-property-a">chevron_right</span>
+            </div>
+          </div>
+
+          <!-- Unanswered Guest Messages in Card -->
+          <div class="flex flex-col gap-2 pl-1">
+            <div class="bg-light-surface-container-low/60 p-2.5 rounded-md border border-light-outline-variant/60 flex flex-col gap-1">
+              <div class="flex items-center justify-between text-[11px] font-code text-light-secondary">
+                <span class="font-medium text-light-on-surface">Marcus L.</span>
+                <span>09:38</span>
+              </div>
+              <p class="text-body-md text-light-secondary">
+                &#34;Thanks! Quick follow-up: is early bag drop around 1 PM possible?&#34;
+              </p>
+            </div>
+
+            <div class="bg-light-surface-container-low/60 p-2.5 rounded-md border border-light-outline-variant/60 flex flex-col gap-1">
+              <div class="flex items-center justify-between text-[11px] font-code text-light-secondary">
+                <span class="font-medium text-light-on-surface">Marcus L.</span>
+                <span>09:39</span>
+              </div>
+              <p class="text-body-md text-light-secondary">
+                &#34;Also we&#39;re bringing a travel crib. Is there space in the main bedroom?&#34;
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pl-1 text-[11px] text-property-a font-label pt-1 border-t border-light-outline-variant/40">
+            <span>Tap to open draft reply</span>
+            <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+          </div>
+        </div>
+
+        <!-- PROPERTY A: MARCUS L. (ADDRESSED / RESOLVED STATE COMPACT ROW) -->
+        <article id="cardMarcusAddressed" data-status="sent" data-stage="confirmed" data-search="marcus coastal loft sent bag drop travel crib" onclick="currentGuest=&#39;marcus&#39;; goToStep(&#39;thread&#39;);" class="hidden bg-light-surface-container-low/70 rounded-lg border border-light-outline-variant px-4 py-3 flex flex-col gap-1.5 transition hover:bg-light-surface-container-low cursor-pointer">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-green-50 text-success flex items-center justify-center border border-green-200 shrink-0">
+                <span class="material-symbols-outlined text-[13px]">done_all</span>
+              </span>
+              <span class="font-label text-label-md text-light-on-surface">Marcus L. (Nov 21 – 25)</span>
+            </div>
+            <span class="text-success text-[11px] font-code font-medium">Sent just now</span>
+          </div>
+          <div class="flex items-center justify-between text-body-sm text-light-secondary pl-7">
+            <p id="marcusSentQuotePreview" class="truncate text-[13px] text-light-secondary">
+              <span class="font-medium text-light-on-surface">Sent by You:</span> &#34;Hi Marcus! 1 PM bag drop is fine. Save luggage space...&#34;
+            </p>
+            <span class="material-symbols-outlined text-[16px] text-light-outline shrink-0 ml-1">chevron_right</span>
+          </div>
+        </article>
+
+        <!-- PROPERTY A: JULIAN T. (ADDRESSED SUMMARY) -->
+        <article id="cardJulianSection" data-status="sent" data-stage="current" data-search="julian coastal loft router credenza sent" onclick="currentGuest=&#39;julian&#39;; goToStep(&#39;thread&#39;);" class="bg-light-surface-container-low/70 rounded-lg border border-light-outline-variant px-4 py-3 flex flex-col gap-1.5 cursor-pointer hover:bg-light-surface-container transition">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-green-50 text-success flex items-center justify-center border border-green-200 shrink-0">
+                <span class="material-symbols-outlined text-[13px]">done_all</span>
+              </span>
+              <span class="font-label text-label-md text-light-on-surface">Julian T. (Nov 15 – 19)</span>
+            </div>
+            <span class="text-light-secondary text-[11px] font-code">Sent 42m ago</span>
+          </div>
+          <div class="flex items-center justify-between text-body-sm text-light-secondary pl-7">
+            <p class="truncate text-[13px] text-light-secondary">
+              <span class="font-medium text-light-on-surface">Sent by Host B:</span> &#34;Hi Julian, router is on second shelf inside entryway credenza...&#34;
+            </p>
+            <span class="material-symbols-outlined text-[16px] text-light-outline shrink-0 ml-1">chevron_right</span>
+          </div>
+        </article>
+
+        <!-- PROPERTY B: SARAH K. (ACTIVE DISCOUNT INQUIRY CARD) -->
+        <div id="cardSarahSection" data-status="review" data-stage="inquiry" data-search="sarah mountain chalet discount 800 counter" onclick="openGuestJourney(&#39;sarah&#39;)" class="hidden bg-white rounded-lg border-2 border-warning/60 hover:border-property-b p-4 shadow-sm flex flex-col gap-3 relative overflow-hidden transition-all active:scale-[0.98] cursor-pointer">
+          <div class="absolute top-0 left-0 bottom-0 w-1.5 bg-property-b"></div>
+
+          <!-- Single Line Header -->
+          <div class="flex items-center justify-between pl-1">
+            <div class="flex items-center gap-1.5">
+              <span class="w-6 h-6 rounded-full bg-amber-50 text-property-b flex items-center justify-center border border-amber-200">
+                <span class="material-symbols-outlined text-[15px]">priority_high</span>
+              </span>
+              <span class="font-label text-label-md text-light-on-surface">Sarah K. (Dec 12 – 17)</span>
+            </div>
+            <div class="flex items-center gap-1 text-light-secondary">
+              <span class="text-body-sm font-code">14m ago</span>
+              <span class="material-symbols-outlined text-[18px] text-property-b">chevron_right</span>
+            </div>
+          </div>
+
+          <!-- Realistic Net Payout Warning -->
+          <div class="bg-warning-surface/90 border border-amber-300 rounded-md p-2.5 flex items-start gap-2">
+            <span class="material-symbols-outlined text-warning text-[18px] shrink-0 mt-0.5">warning</span>
+            <div class="text-body-sm text-amber-950">
+              <strong class="font-label text-label-sm block">Human Judgment Needed: Below Net Floor</strong>
+              Guest offered $800 all-in for 5 nights ($160/nt). Below your $185/nt floor.
+            </div>
+          </div>
+
+          <!-- Guest Message Preview -->
+          <p class="text-body-md text-light-secondary pl-1 bg-light-surface-container-low/50 p-2.5 rounded-md border border-light-outline-variant/60">
+            &#34;We love the Chalet! Would you consider $800 total for our 5-night getaway next month? Ready to book right away!&#34;
+          </p>
+
+          <div class="flex items-center justify-between pl-1 text-[11px] text-property-b font-label pt-1 border-t border-light-outline-variant/40">
+            <span>Tap to review discount &amp; counter with AI</span>
+            <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+          </div>
+        </div>
+
+        <!-- PROPERTY B: SARAH K. (ADDRESSED / RESOLVED STATE COMPACT ROW) -->
+        <article id="cardSarahAddressed" data-status="sent" data-stage="inquiry" data-search="sarah mountain chalet discount counter sent 185" onclick="currentGuest=&#39;sarah&#39;; goToStep(&#39;thread&#39;);" class="hidden bg-light-surface-container-low/70 rounded-lg border border-light-outline-variant px-4 py-3 flex flex-col gap-1.5 transition hover:bg-light-surface-container-low cursor-pointer">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-green-50 text-success flex items-center justify-center border border-green-200 shrink-0">
+                <span class="material-symbols-outlined text-[13px]">done_all</span>
+              </span>
+              <span class="font-label text-label-md text-light-on-surface">Sarah K. (Dec 12 – 17)</span>
+            </div>
+            <span class="text-success text-[11px] font-code font-medium">Counter sent</span>
+          </div>
+          <div class="flex items-center justify-between text-body-sm text-light-secondary pl-7">
+            <p id="sarahSentQuotePreview" class="truncate text-[13px] text-light-secondary">
+              <span class="font-medium text-light-on-surface">Sent counter:</span> &#34;$185/nt + complimentary early check-in at 1 PM...&#34;
+            </p>
+            <span class="material-symbols-outlined text-[16px] text-light-outline shrink-0 ml-1">chevron_right</span>
+          </div>
+        </article>
+
+      </main>
+
+      <!-- Bottom Navigation Bar -->
+      <nav class="fixed bottom-0 left-0 right-0 max-w-[420px] mx-auto bg-white border-t border-light-outline-variant px-8 py-2 flex items-center justify-between z-30 shadow-lg">
+        <button type="button" onclick="goToStep(&#39;queue&#39;)" id="navBtnMessages" class="flex flex-col items-center gap-0.5 text-light-primary font-label text-[11px] transition">
+          <span class="material-symbols-outlined text-[22px]">inbox</span>
+          <span>Messages</span>
+        </button>
+        <button type="button" onclick="goToStep(&#39;house-details&#39;)" id="navBtnHouseDetails" class="flex flex-col items-center gap-0.5 text-light-secondary hover:text-light-on-surface font-label text-[11px] transition">
+          <span class="material-symbols-outlined text-[22px]">menu_book</span>
+          <span>House Details</span>
+        </button>
+        <button type="button" onclick="goToStep(&#39;account&#39;)" id="navBtnAccount" class="flex flex-col items-center gap-0.5 text-light-secondary hover:text-light-on-surface font-label text-[11px] transition">
+          <span class="material-symbols-outlined text-[22px]">person</span>
+          <span>Account</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- OPTION 1: FULL-PAGE DEDICATED GUEST THREAD SCREEN -->
+    <!-- ========================================== -->
+    <div id="viewThread" class="flex flex-col flex-1 pb-28">
+      <!-- Screen Header with Back to Messages or Dialogue -->
+      <header class="px-4 py-3 border-b border-light-outline-variant bg-light-surface sticky top-8 z-20 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="goToStep(&#39;queue&#39;)" class="w-8 h-8 rounded-full bg-light-surface-container-low border border-light-outline-variant flex items-center justify-center text-light-on-surface hover:bg-light-surface-container transition" title="Back to Messages" aria-label="Back to Messages">
+            <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+          </button>
+          <div>
+            <h1 id="threadScreenTitle" class="font-headline text-headline-sm text-light-on-surface leading-tight">Julian T. (Nov 15 – 19)</h1>
+            <p id="threadScreenSubtitle" class="text-body-sm text-property-a font-label">Coastal Loft • Current Guest Thread</p>
+          </div>
+        </div>
+        
+      </header>
+
+      <!-- Chronological Guest Thread Feed for Marcus -->
+      <main id="threadFeedMarcus" class="px-4 py-3 flex flex-col gap-3.5 flex-1 hidden">
+        <div class="text-center py-1">
+          <span class="px-2.5 py-0.5 rounded-full bg-light-surface-container text-light-secondary text-[11px] font-code">
+            Airbnb Reservation Confirmed • Nov 21 – 25 (4 nights)
+          </span>
+        </div>
+
+        <!-- Message 1: Earlier Guest Inquiry -->
+        <div class="flex flex-col gap-1 max-w-[85%]">
+          <div class="flex items-center gap-1.5 text-[11px] font-code text-light-secondary pl-1">
+            <span class="font-medium text-light-on-surface">Marcus L.</span>
+            <span>Yesterday · 14:15</span>
+          </div>
+          <div class="bg-white border border-light-outline-variant rounded-2xl rounded-tl-sm p-3 text-body-sm text-light-on-surface shadow-xs">
+            &#34;Hi! We are driving in for our family trip next Friday. Is there designated parking on-site for a minivan, and how many stairs to the front door?&#34;
+          </div>
+        </div>
+
+        <!-- Message 2: Earlier Host B Sent Reply -->
+        <div class="flex flex-col gap-1 max-w-[85%] self-end">
+          <div class="flex items-center justify-end gap-1.5 text-[11px] font-code text-light-secondary pr-1">
+            <span class="font-medium text-light-on-surface">Host B (Co-Host)</span>
+            <span>Yesterday · 14:48</span>
+          </div>
+          <div class="bg-teal-50 border border-teal-200 text-teal-950 rounded-2xl rounded-tr-sm p-3 text-body-sm shadow-xs">
+            &#34;Hi Marcus! Yes, our private driveway easily fits a minivan, and curb parking is unmetered. There are only 3 low steps up to the porch entryway.&#34;
+          </div>
+        </div>
+
+        <!-- Message 3: Unanswered Rapid-Fire Guest Message -->
+        <div class="flex flex-col gap-1 max-w-[85%]">
+          <div class="flex items-center gap-1.5 text-[11px] font-code text-light-secondary pl-1">
+            <span class="font-medium text-light-on-surface">Marcus L.</span>
+            <span>Today · 09:38</span>
+          </div>
+          <div class="bg-white border-2 border-property-a rounded-2xl rounded-tl-sm p-3 text-body-sm text-light-on-surface shadow-xs">
+            &#34;Thanks! Quick follow-up: is early bag drop around 1 PM possible?&#34;
+          </div>
+        </div>
+
+        <!-- Message 4: Unanswered Rapid-Fire Guest Message -->
+        <div class="flex flex-col gap-1 max-w-[85%]">
+          <div class="flex items-center gap-1.5 text-[11px] font-code text-light-secondary pl-1">
+            <span class="font-medium text-light-on-surface">Marcus L.</span>
+            <span>Today · 09:39</span>
+          </div>
+          <div class="bg-white border-2 border-property-a rounded-2xl rounded-tl-sm p-3 text-body-sm text-light-on-surface shadow-xs">
+            &#34;Also we&#39;re bringing a travel crib. Is there space in the main bedroom?&#34;
+          </div>
+        </div>
+        <!-- Message 5: Sent Reply by Host A (Visible once marked sent) -->
+        <div id="threadSentBubbleMarcus" class="hidden flex flex-col gap-1 max-w-[88%] self-end">
+          <div class="flex items-center justify-end gap-1.5 text-[11px] font-code text-light-secondary pr-1">
+            <span class="font-medium text-light-on-surface">Host A (You)</span>
+            <span>Just now</span>
+          </div>
+          <div class="bg-teal-50 border border-teal-200 text-teal-950 rounded-2xl rounded-tr-sm p-3 text-body-sm shadow-xs">
+            <p id="threadSentTextMarcus">&#34;Hi Marcus! 1 PM bag drop is fine. Save luggage space if you like. We keep a sanitized travel crib and fresh fitted sheet in the hall linen closet that fits nicely in the main bedroom. Let us know if you need anything else!&#34;</p>
+          </div>
+        </div>
+      </main>
+
+      <!-- Chronological Guest Thread Feed for Sarah -->
+      <main id="threadFeedSarah" class="hidden px-4 py-3 flex flex-col gap-3.5 flex-1">
+        <div class="text-center py-1">
+          <span class="px-2.5 py-0.5 rounded-full bg-light-surface-container text-light-secondary text-[11px] font-code">
+            Inquiry • Dec 12 – 17 (5 nights) • Mountain Chalet
+          </span>
+        </div>
+
+        <div class="flex flex-col gap-1 max-w-[85%]">
+          <div class="flex items-center gap-1.5 text-[11px] font-code text-light-secondary pl-1">
+            <span class="font-medium text-light-on-surface">Sarah K.</span>
+            <span>Today · 09:30</span>
+          </div>
+          <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl rounded-tl-sm p-3 text-body-sm text-amber-950 shadow-xs">
+            &#34;We love the Chalet! Would you consider $800 total for our 5-night getaway next month? Ready to book right away!&#34;
+          </div>
+        </div>
+
+        <!-- Sent Counter Bubble by Host A (Visible once counter sent) -->
+        <div id="threadSentBubbleSarah" class="hidden flex flex-col gap-1 max-w-[88%] self-end">
+          <div class="flex items-center justify-end gap-1.5 text-[11px] font-code text-light-secondary pr-1">
+            <span class="font-medium text-light-on-surface">Host A (You)</span>
+            <span>Just now</span>
+          </div>
+          <div class="bg-amber-50 border border-amber-300 text-amber-950 rounded-2xl rounded-tr-sm p-3 text-body-sm shadow-xs">
+            <p id="threadSentTextSarah">&#34;Hi Sarah! Thank you so much for your interest in the Mountain Chalet. While we aren&#39;t able to drop below our $185 nightly rate, we&#39;d love to offer you complimentary early check-in at 1:00 PM for those 5 nights ($925 total). Let us know if that works!&#34;</p>
+          </div>
+        </div>
+      </main>
+
+      <!-- Chronological Guest Thread Feed for Julian -->
+      <main id="threadFeedJulian" class="px-4 py-3 flex flex-col gap-3.5 flex-1">
+        <div class="text-center py-1">
+          <span class="px-2.5 py-0.5 rounded-full bg-light-surface-container text-light-secondary text-[11px] font-code">
+            Current Guest • Nov 15 – 19 • Coastal Loft
+          </span>
+        </div>
+
+        <div class="flex flex-col gap-1 max-w-[85%]">
+          <div class="flex items-center gap-1.5 text-[11px] font-code text-light-secondary pl-1">
+            <span class="font-medium text-light-on-surface">Julian T.</span>
+            <span>Today · 08:52</span>
+          </div>
+          <div class="bg-white border border-light-outline-variant rounded-2xl rounded-tl-sm p-3 text-body-sm text-light-on-surface shadow-xs">
+            &#34;Morning! Quick question: where is the Wi-Fi router located? We want to plug in an Ethernet cable for a video call.&#34;
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1 max-w-[88%] self-end">
+          <div class="flex items-center justify-end gap-1.5 text-[11px] font-code text-light-secondary pr-1">
+            <span class="font-medium text-light-on-surface">Host B (Co-Host)</span>
+            <span>Today · 09:02</span>
+          </div>
+          <div class="bg-teal-50 border border-teal-200 text-teal-950 rounded-2xl rounded-tr-sm p-3 text-body-sm shadow-xs">
+            &#34;Hi Julian, router is on second shelf inside entryway credenza right under the key tray. Two gigabit Ethernet ports are open on the back!&#34;
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1 max-w-[85%]">
+          <div class="flex items-center gap-1.5 text-[11px] font-code text-light-secondary pl-1">
+            <span class="font-medium text-light-on-surface">Julian T.</span>
+            <span>Today · 09:05</span>
+          </div>
+          <div class="bg-white border border-light-outline-variant rounded-2xl rounded-tl-sm p-3 text-body-sm text-light-on-surface shadow-xs">
+            &#34;Found it and plugged in, connection is super fast. Thanks for the quick response!&#34;
+          </div>
+        </div>
+      </main>
+
+      <!-- Sticky Floating Action Bar linking directly to AI Draft or Back to Messages -->
+      <div class="fixed bottom-0 left-0 right-0 max-w-[420px] mx-auto bg-white/95 backdrop-blur-sm border-t border-light-outline-variant p-3 flex flex-col items-center gap-2 z-30 shadow-lg">
+        <button type="button" id="threadActionPrimaryBtn" onclick="goToStep(&#39;dialogue&#39;)" class="w-full bg-light-primary text-light-on-primary py-2.5 px-4 rounded-lg text-label-md font-label flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition"><span class="material-symbols-outlined text-[18px] text-green-300">done_all</span><span>Resolved by Host B • Back to Messages</span></button>
+        <button type="button" onclick="goToStep(&#39;queue&#39;)" class="text-body-sm text-light-secondary hover:text-light-on-surface transition">
+          Back to Messages Queue
+        </button>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- STEP 2: AGENT DIALOGUE (AI DRAFT & COACH) -->
+    <!-- ========================================== -->
+    <div id="viewDialogue" class="hidden flex flex-col flex-1">
+      <!-- Minimal Screen Header with Back Arrow to Messages Queue -->
+      <header class="px-4 py-3 border-b border-light-outline-variant bg-light-surface sticky top-8 z-20 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="goToStep(&#39;queue&#39;)" class="w-8 h-8 rounded-full bg-light-surface-container-low border border-light-outline-variant flex items-center justify-center text-light-on-surface hover:bg-light-surface-container transition" title="Back to Messages" aria-label="Back to Messages">
+            <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+          </button>
+          <div>
+            <h1 id="dialogueHeaderTitle" class="font-headline text-headline-sm text-light-on-surface leading-tight">Marcus L. (Nov 21 – 25)</h1>
+            <p id="dialogueHeaderSubtitle" class="text-body-sm text-property-a font-label">Coastal Loft • Draft &amp; Coach</p>
+          </div>
+        </div>
+      </header>
+
+      <!-- ================= MARCUS L. DIALOGUE CONTENT ================= -->
+      <div id="dialogueContentMarcus" class="flex flex-col flex-1 hidden">
+        <!-- Option 2: Inline Contextual Thread Timeline (Directly above AI draft) -->
+        <section class="bg-slate-50/90 border-b border-light-outline-variant px-4 py-3 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 text-[11px] font-label font-semibold text-light-secondary uppercase tracking-wider">
+              <span class="material-symbols-outlined text-[15px] text-property-a">chat</span>
+              <span>Recent Thread Context</span>
+            </div>
+            <button type="button" onclick="goToStep(&#39;thread&#39;)" class="text-[11px] font-label text-property-a hover:underline flex items-center gap-0.5">
+              <span>See all 4 msgs</span>
+              <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+            </button>
+          </div>
+
+          <!-- Inline Message Bubble 1 (Host B previous reply) -->
+          <div class="flex flex-col gap-0.5 max-w-[90%] self-end">
+            <span class="text-[10px] font-code text-light-secondary text-right pr-1">Host B (Co-Host) • Yesterday</span>
+            <div class="bg-teal-50/80 border border-teal-200 text-teal-950 p-2.5 rounded-xl rounded-tr-xs text-[12px] leading-snug">
+              &#34;Yes, our private driveway easily fits a minivan, and curb parking is unmetered. There are only 3 low steps up...&#34;
+            </div>
+          </div>
+
+          <!-- Inline Message Bubble 2 (Latest Marcus inbound question) -->
+          <div class="flex flex-col gap-0.5 max-w-[90%]">
+            <span class="text-[10px] font-code text-light-secondary pl-1">Marcus L. • Today 09:38 &amp; 09:39</span>
+            <div class="bg-white border-2 border-property-a p-2.5 rounded-xl rounded-tl-xs text-[12px] text-light-on-surface leading-snug shadow-xs flex flex-col gap-1">
+              <p>• &#34;is early bag drop around 1 PM possible?&#34;</p>
+              <p>• &#34;we&#39;re bringing a travel crib. Is there space in the main bedroom?&#34;</p>
+            </div>
+          </div>
+        </section>
+
+        <main class="px-4 py-3 flex flex-col gap-3.5 flex-1 pb-24">
+          <!-- Turn 1: Initial AI Draft -->
+          <div class="flex flex-col gap-1 max-w-[94%]">
+            <div class="flex items-center gap-1.5 text-[11px] font-label text-property-a font-semibold pl-1">
+              <span class="w-2 h-2 rounded-full bg-property-a"></span>
+              <span>Haven Co-Host Agent</span>
+              <span class="text-light-secondary font-normal font-code">09:40</span>
+            </div>
+            <div class="bg-white rounded-2xl rounded-tl-sm border border-light-outline-variant p-3.5 shadow-sm text-body-md text-light-on-surface leading-relaxed flex flex-col gap-2.5">
+              <p class="text-body-sm text-light-secondary text-pretty">
+                Early bag drop at 1 PM works since cleaning finishes by noon. The primary bedroom has space for a travel crib next to the dresser.
+              </p>
+
+              <!-- Draft Container 1 with Inline Edit Toggle -->
+              <div class="p-3 rounded-lg bg-light-surface-container-low border border-light-outline-variant/80 flex flex-col gap-2">
+                <div class="flex items-center justify-between text-[11px] font-label">
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-semibold text-light-on-surface">Draft 1</span>
+                    <span class="text-property-a font-semibold text-[11px]">Ready</span>
+                  </div>
+                  <button type="button" onclick="toggleInlineEdit(&#39;draftText1&#39;, &#39;draftArea1&#39;, this)" class="text-property-a hover:underline flex items-center gap-0.5">
+                    <span class="material-symbols-outlined text-[13px]">edit</span>
+                    <span>Edit</span>
+                  </button>
+                </div>
+                <p id="draftText1" class="text-body-sm text-light-on-surface text-pretty">
+                  &#34;Hi Marcus! 1 PM early bag drop is fine. Just text us when you are 10 minutes away. The primary bedroom has plenty of open space next to the dresser for your travel crib. Safe travels on Friday!&#34;
+                </p>
+                <textarea id="draftArea1" class="hidden w-full p-2 bg-white border border-light-outline-variant rounded-md text-body-sm text-light-on-surface focus:border-property-a focus:ring-0 outline-hidden resize-none font-body leading-relaxed" rows="3">&#34;Hi Marcus! 1 PM early bag drop is fine. Just text us when you are 10 minutes away. The primary bedroom has plenty of open space next to the dresser for your travel crib. Safe travels on Friday!&#34;</textarea>
+                <div class="flex items-center gap-2 pt-1 border-t border-light-outline-variant/40">
+                  <button type="button" onclick="handleCopy(this, &#39;draftText1&#39;, &#39;draftArea1&#39;)" class="flex-1 bg-property-a text-white py-1.5 px-2 rounded-md font-label text-[11px] flex items-center justify-center gap-1 active:scale-95 transition shadow-xs whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[14px]">content_copy</span>
+                    <span>Copy &amp; Open</span>
+                  </button>
+                  <button type="button" onclick="handleMarkSent(this)" class="flex-1 bg-white border border-light-outline-variant text-light-on-surface hover:bg-light-surface-container-low py-1.5 px-2 rounded-md font-label text-[11px] flex items-center justify-center gap-1 active:scale-95 transition shadow-xs whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[14px] text-success">send_and_archive</span>
+                    <span>Mark as Sent</span>
+                  </button>
+                </div>
+              </div>
+
+              <p class="text-body-sm text-light-secondary text-pretty">
+                We also have a sanitized travel crib in the hallway linen closet if you want to offer that so they pack lighter.
+              </p>
+            </div>
+          </div>
+
+          <!-- Turn 2: Host Feedback -->
+          <div class="flex flex-col gap-1 max-w-[88%] self-end">
+            <div class="flex items-center justify-end gap-1.5 text-[11px] font-label text-claimed-host-a font-semibold pr-1">
+              <span>Host A (You)</span>
+              <span class="text-light-secondary font-normal font-code">09:41</span>
+            </div>
+            <div class="bg-indigo-50 border border-indigo-200 text-indigo-950 rounded-2xl rounded-tr-sm p-3.5 shadow-sm text-body-md leading-relaxed">
+              Good catch. Let us mention our travel crib in the closet so they do not have to bring one.
+            </div>
+          </div>
+
+          <!-- Turn 3: Refined Draft (Latest) -->
+          <div class="flex flex-col gap-1 max-w-[94%]">
+            <div class="flex items-center gap-1.5 text-[11px] font-label text-property-a font-semibold pl-1">
+              <span class="w-2 h-2 rounded-full bg-property-a"></span>
+              <span>Haven Co-Host Agent</span>
+              <span class="text-light-secondary font-normal font-code">09:42</span>
+            </div>
+            <div class="p-3.5 rounded-2xl rounded-tl-sm bg-white border border-teal-200 shadow-sm flex flex-col gap-2.5">
+              <p class="text-body-sm text-light-secondary text-pretty">
+                Here is the revised draft mentioning the closet crib and fitted sheet:
+              </p>
+
+              <!-- Draft Container 2 with Inline Edit Toggle -->
+              <div class="p-3 rounded-lg bg-teal-50/70 border border-teal-200 flex flex-col gap-2">
+                <div class="flex items-center justify-between text-[11px] font-label">
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-semibold text-teal-950">Draft 2 (Latest)</span>
+                    <span class="text-property-a font-semibold text-[11px]">Recommended</span>
+                  </div>
+                  <button type="button" onclick="toggleInlineEdit(&#39;draftText2&#39;, &#39;draftArea2&#39;, this)" class="text-property-a hover:underline flex items-center gap-0.5">
+                    <span class="material-symbols-outlined text-[13px]">edit</span>
+                    <span>Edit</span>
+                  </button>
+                </div>
+                <p id="draftText2" class="text-body-sm text-teal-950 text-pretty">
+                  &#34;Hi Marcus! 1 PM bag drop is fine. Save luggage space if you like. We keep a sanitized travel crib and fresh fitted sheet in the hall linen closet that fits nicely in the main bedroom. Let us know if you need anything else!&#34;
+                </p>
+                <textarea id="draftArea2" class="hidden w-full p-2 bg-white border border-teal-300 rounded-md text-body-sm text-teal-950 focus:border-property-a focus:ring-0 outline-hidden resize-none font-body leading-relaxed" rows="3">&#34;Hi Marcus! 1 PM bag drop is fine. Save luggage space if you like. We keep a sanitized travel crib and fresh fitted sheet in the hall linen closet that fits nicely in the main bedroom. Let us know if you need anything else!&#34;</textarea>
+                <div class="flex items-center gap-2 pt-1 border-t border-teal-200/60">
+                  <button type="button" onclick="handleCopy(this, &#39;draftText2&#39;, &#39;draftArea2&#39;)" class="flex-1 bg-property-a text-white py-1.5 px-2 rounded-md font-label text-[11px] flex items-center justify-center gap-1 active:scale-95 transition shadow-xs whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[14px]">content_copy</span>
+                    <span>Copy &amp; Open</span>
+                  </button>
+                  <button type="button" onclick="handleMarkSent(this)" class="flex-1 bg-white border border-light-outline-variant text-light-on-surface hover:bg-light-surface-container-low py-1.5 px-2 rounded-md font-label text-[11px] flex items-center justify-center gap-1 active:scale-95 transition shadow-xs whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[14px] text-success">send_and_archive</span>
+                    <span>Mark as Sent</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <!-- ================= SARAH K. DIALOGUE CONTENT (DISCOUNT COUNTER) ================= -->
+      <div id="dialogueContentSarah" class="hidden flex flex-col flex-1">
+        <!-- Human Judgment Needed Banner -->
+        <div class="bg-amber-50/90 border-b border-amber-300 px-4 py-2 flex items-center justify-between gap-2 text-body-sm">
+          <div class="truncate text-amber-950 flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-warning text-[17px] shrink-0">warning</span>
+            <span><strong>Offer:</strong> $160/nt ($800 total for 5 nights)</span>
+          </div>
+          <span class="text-[11px] font-code text-warning bg-white px-2 py-0.5 rounded border border-amber-300 shrink-0">
+            Floor: $185/nt
+          </span>
+        </div>
+
+        <!-- Inline Contextual Thread Timeline (Directly above AI draft) -->
+        <section class="bg-slate-50/90 border-b border-light-outline-variant px-4 py-3 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 text-[11px] font-label font-semibold text-light-secondary uppercase tracking-wider">
+              <span class="material-symbols-outlined text-[15px] text-property-b">chat</span>
+              <span>Recent Thread Context</span>
+            </div>
+            <button type="button" onclick="goToStep(&#39;thread&#39;)" class="text-[11px] font-label text-property-b hover:underline flex items-center gap-0.5">
+              <span>See full thread</span>
+              <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+            </button>
+          </div>
+
+          <!-- Inline Message Bubble (Sarah inbound discount inquiry) -->
+          <div class="flex flex-col gap-0.5 max-w-[92%]">
+            <span class="text-[10px] font-code text-light-secondary pl-1">Sarah K. • Today 09:30</span>
+            <div class="bg-white border-2 border-property-b p-2.5 rounded-xl rounded-tl-xs text-[12px] text-light-on-surface leading-snug shadow-xs">
+              &#34;We love the Chalet! Would you consider $800 total for our 5-night getaway next month? Ready to book right away!&#34;
+            </div>
+          </div>
+        </section>
+
+        <main class="px-4 py-3 flex flex-col gap-3.5 flex-1 pb-24">
+          <!-- Turn 1: Agent Explanation -->
+          <div class="flex flex-col gap-1 max-w-[92%]">
+            <div class="flex items-center gap-1.5 text-[11px] font-label text-property-b font-semibold pl-1">
+              <span class="w-2 h-2 rounded-full bg-property-b"></span>
+              <span>Haven Co-Host Agent</span>
+              <span class="text-light-secondary font-normal font-code">09:32</span>
+            </div>
+            <div class="bg-white rounded-2xl rounded-tl-sm border border-light-outline-variant p-3.5 shadow-sm text-body-md text-light-on-surface leading-relaxed">
+              <p class="text-amber-950 bg-amber-50 p-2 rounded-md border border-amber-200 text-body-sm mb-2">
+                Sarah is requesting <strong>$160/night</strong> for 5 nights next month. Your verified pricing policy for the Mountain Chalet sets a strict floor of <strong>$185/night</strong>.
+              </p>
+              I prepared a polite counter-offer held at your $185 floor ($925 total):
+              <div class="mt-2 p-2.5 rounded-lg bg-light-surface-container-low border border-light-outline-variant/70 text-body-sm text-light-secondary">
+                &#34;Hi Sarah! Thank you so much for your interest in the Mountain Chalet. While we aren&#39;t able to do $160, we&#39;d love to host you at our multi-night discount rate of $185/night ($925 total) for those 5 nights. Let us know if that works!&#34;
+              </div>
+            </div>
+          </div>
+
+          <!-- Turn 2: Host Guidance -->
+          <div class="flex flex-col gap-1 max-w-[88%] self-end">
+            <div class="flex items-center justify-end gap-1.5 text-[11px] font-label text-claimed-host-a font-semibold pr-1">
+              <span>Host A (You)</span>
+              <span class="text-light-secondary font-normal font-code">09:34</span>
+            </div>
+            <div class="bg-indigo-50 border border-indigo-200 text-indigo-950 rounded-2xl rounded-tr-sm p-3.5 shadow-sm text-body-md leading-relaxed">
+              I definitely don&#39;t want to break the $185 floor. But next month has a 4-day vacancy right before her dates. Could we offer free early check-in at 1 PM instead of dropping the rate?
+            </div>
+          </div>
+
+          <!-- Turn 3: Agent Counter Proposal with Inline Edit Toggle -->
+          <div class="flex flex-col gap-1 max-w-[94%]">
+            <div class="flex items-center gap-1.5 text-[11px] font-label text-property-b font-semibold pl-1">
+              <span class="w-2 h-2 rounded-full bg-property-b"></span>
+              <span>Haven Co-Host Agent</span>
+              <span class="text-light-secondary font-normal font-code">09:35</span>
+            </div>
+            <div class="p-3.5 rounded-2xl rounded-tl-sm bg-white border border-amber-200 shadow-sm flex flex-col gap-2.5">
+              <p class="text-body-sm text-light-secondary">
+                That&#39;s a great compromise! It preserves your $185/night rate integrity and gives her a genuine VIP gesture:
+              </p>
+
+              <div class="p-3 rounded-lg bg-amber-50/70 border border-amber-300 flex flex-col gap-2">
+                <div class="flex items-center justify-between text-[11px] font-label">
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-semibold text-property-b">Proposed Counter</span>
+                    <span class="font-code text-light-secondary text-[10px]">$185/nt + 1PM Check-in</span>
+                  </div>
+                  <button type="button" onclick="toggleInlineEdit(&#39;draftTextSarah&#39;, &#39;draftAreaSarah&#39;, this)" class="text-property-b hover:underline flex items-center gap-0.5">
+                    <span class="material-symbols-outlined text-[13px]">edit</span>
+                    <span>Edit</span>
+                  </button>
+                </div>
+                <p id="draftTextSarah" class="text-body-sm text-amber-950">
+                  &#34;Hi Sarah! Thank you for loving the Chalet! While we can&#39;t quite meet $160, we&#39;d be thrilled to offer our special extended-stay rate of $185/night ($925 total) and include complimentary early check-in at 1:00 PM so you can settle in early. We&#39;d love to host your getaway!&#34;
+                </p>
+                <textarea id="draftAreaSarah" class="hidden w-full p-2 bg-white border border-amber-300 rounded-md text-body-sm text-amber-950 focus:border-property-b focus:ring-0 outline-hidden resize-none font-body leading-relaxed" rows="3">&#34;Hi Sarah! Thank you for loving the Chalet! While we can&#39;t quite meet $160, we&#39;d be thrilled to offer our special extended-stay rate of $185/night ($925 total) and include complimentary early check-in at 1:00 PM so you can settle in early. We&#39;d love to host your getaway!&#34;</textarea>
+                <div class="flex items-center gap-2 pt-1 border-t border-amber-200/60">
+                  <button type="button" onclick="handleCopy(this, &#39;draftTextSarah&#39;, &#39;draftAreaSarah&#39;)" class="flex-1 bg-property-b text-white py-1.5 px-2 rounded-md font-label text-[11px] flex items-center justify-center gap-1 active:scale-95 transition shadow-xs whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[14px]">content_copy</span>
+                    <span>Copy Counter</span>
+                  </button>
+                  <button type="button" onclick="handleMarkSent(this)" class="flex-1 bg-white border border-light-outline-variant text-light-on-surface hover:bg-light-surface-container-low py-1.5 px-2 rounded-md font-label text-[11px] flex items-center justify-center gap-1 active:scale-95 transition shadow-xs whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[14px] text-success">send_and_archive</span>
+                    <span>Mark as Sent</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <!-- Bottom Chat Composer -->
+      <div class="fixed bottom-0 left-0 right-0 max-w-[420px] mx-auto bg-white border-t border-light-outline-variant p-3 flex items-center gap-2 z-30 shadow-lg">
+        <input type="text" placeholder="Tell AI how to refine draft..." class="flex-1 py-2 px-3 bg-light-surface-container-low border border-light-outline-variant rounded-full text-body-sm text-light-on-surface focus:bg-white focus:border-property-a outline-hidden transition">
+        <button type="button" onclick="alert(&#39;Message sent to agent&#39;);" class="w-9 h-9 rounded-full bg-light-primary text-light-on-primary flex items-center justify-center active:scale-95 transition shrink-0">
+          <span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- STEP 3: HOUSE DETAILS (KEY-VALUE SPEC SHEET) -->
+    <!-- ========================================== -->
+    <div id="viewHouseDetails" class="hidden flex flex-col flex-1 pb-24">
+      <!-- Screen Header with Global Property Context -->
+      <header class="px-4 py-3 border-b border-light-outline-variant bg-light-surface sticky top-8 z-20 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="goToStep(&#39;queue&#39;)" class="w-8 h-8 rounded-full bg-light-surface-container-low border border-light-outline-variant flex items-center justify-center text-light-on-surface hover:bg-light-surface-container transition" aria-label="Back to Messages">
+            <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+          </button>
+          <div>
+            <h1 class="font-headline text-headline-sm text-light-on-surface leading-tight">House Details</h1>
+            <div class="flex items-center gap-1.5 text-body-sm text-light-secondary">
+              <span id="houseDetailsPropDot" class="w-2 h-2 rounded-full bg-property-a"></span>
+              <span id="houseDetailsPropTitle" class="font-label text-label-sm text-property-a font-semibold">Property A • Coastal Loft</span>
+              <span class="text-body-sm text-light-secondary font-code text-[11px]">Active Context</span>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" onclick="togglePropMenu()" class="w-8 h-8 rounded-full bg-light-surface-container-low border border-light-outline-variant text-light-secondary flex items-center justify-center hover:bg-light-surface-container active:scale-95 transition shadow-xs" title="Switch Property">
+          <span class="material-symbols-outlined text-[18px]">apartment</span>
+        </button>
+      </header>
+
+      <!-- Main Content Area: Direction B (Key-Value Data Rows / Spec Sheet) -->
+      <main class="px-4 py-3 flex flex-col gap-3.5 flex-1">
+
+        <!-- 1ST CARD: Connected Knowledge Sources (Collapsible with 2-row max bound) -->
+        <section class="bg-white rounded-lg border border-light-outline-variant shadow-sm overflow-hidden flex flex-col">
+          <!-- Collapsible Header -->
+          <div class="px-3.5 py-2.5 bg-light-surface-container-low border-b border-light-outline-variant flex items-center justify-between cursor-pointer select-none" onclick="toggleKnowledgeSection()">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="material-symbols-outlined text-property-a text-[18px]">folder_special</span>
+              <h2 class="font-label text-label-md text-light-on-surface truncate">Connected Knowledge Sources</h2>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button type="button" class="text-property-a text-label-sm font-label flex items-center gap-0.5 hover:underline" title="Add or import knowledge source" onclick="event.stopPropagation(); goToStep(&#39;import&#39;);">
+                <span class="material-symbols-outlined text-[15px]">add</span> Add
+              </button>
+              <button type="button" id="knowledgeToggleBtn" class="text-light-secondary hover:text-light-on-surface transition p-0.5" aria-label="Toggle section">
+                <span id="knowledgeToggleIcon" class="material-symbols-outlined text-[18px] transition-transform duration-200">expand_less</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Bounded child items: max 2 visible rows (max-h-[116px]), overscroll-contain -->
+          <div id="knowledgeItemsList" class="p-2.5 flex flex-col gap-1.5 max-h-[116px] overflow-y-auto overscroll-contain transition-all duration-200">
+            <!-- Source 1: Airbnb Live Listing -->
+            <div class="flex items-center justify-between p-2 rounded-lg bg-light-surface-container-low border border-light-outline-variant/80 hover:bg-light-surface-container transition">
+              <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <span class="material-symbols-outlined text-property-a text-[18px] shrink-0">link</span>
+                <div class="min-w-0 flex-1">
+                  <span class="font-label text-label-sm text-light-on-surface block truncate">airbnb.com/rooms/8923411</span>
+                  <span class="text-[11px] text-light-secondary font-code block truncate">Live sync active • Auto-parse rules</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Source 2: PDF Guidebook -->
+            <div class="flex items-center justify-between p-2 rounded-lg bg-light-surface-container-low border border-light-outline-variant/80 hover:bg-light-surface-container transition">
+              <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <span class="material-symbols-outlined text-purple-700 text-[18px] shrink-0">picture_as_pdf</span>
+                <div class="min-w-0 flex-1">
+                  <span class="font-label text-label-sm text-light-on-surface block truncate">Coastal_Loft_Guidebook_2026.pdf</span>
+                  <span class="text-[11px] text-light-secondary font-code block truncate">2.4 MB • 6 verified facts extracted</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Search & Filter bar for rapid lookup -->
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-2.5 text-light-secondary text-[18px]">search</span>
+          <input type="text" id="houseRulesSearchInput" oninput="filterHouseRules(this.value)" placeholder="Search rules (e.g. wifi, trash, code)..." class="w-full bg-white border border-light-outline-variant rounded-lg pl-9 pr-3 py-2 text-body-sm text-light-on-surface placeholder:text-light-outline focus:outline-none focus:border-property-a focus-visible:ring-2 focus-visible:ring-property-a shadow-sm">
+        </div>
+
+        <!-- 2ND CARD: KEY-VALUE SPEC SHEET (Compact High-Density Table Rows) -->
+        <section class="bg-white rounded-lg border border-light-outline-variant shadow-sm overflow-hidden flex flex-col">
+          <div class="px-3.5 py-2.5 bg-light-surface-container-low border-b border-light-outline-variant flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-property-a text-[18px]">tune</span>
+              <h2 class="font-label text-label-md text-light-on-surface">Live Operational Values</h2>
+            </div>
+            <button type="button" class="text-property-a text-label-sm font-label flex items-center gap-1 px-2 py-0.5 rounded hover:bg-teal-50" onclick="openInlineEditor(&#39;New Operational Value&#39;, &#39;&#39;)">
+              <span class="material-symbols-outlined text-[15px]">add</span> Add Row
+            </button>
+          </div>
+
+          <!-- Bounded Mobile Scroll Container for Rule Items -->
+          <div id="rulesListContainer" class="max-h-[46vh] overflow-y-auto overscroll-contain divide-y divide-light-outline-variant/60 text-body-sm scrollbar-thin">
+
+            <!-- Category 1: Access & Arrival -->
+            <div class="category-header px-3.5 py-1.5 bg-slate-50 border-b border-light-outline-variant/60 flex items-center justify-between sticky top-0 z-10">
+              <span class="font-label text-[11px] uppercase tracking-wider text-light-secondary font-semibold">Access &amp; Arrival</span>
+              <span class="text-[10px] text-light-secondary font-code">2 rules</span>
+            </div>
+
+            <!-- Row 1: Wi-Fi Network & Password -->
+            <div data-rule-search="wifi network password loft_guest_5g oceanbreeze44 high traffic" class="rule-row p-3 flex items-center justify-between gap-3 hover:bg-light-surface-container-low transition cursor-pointer" onclick="openInlineEditor(&#39;Wi-Fi Network&#39;, &#39;SSID: Loft_Guest_5G\nPassword: oceanbreeze44\nRouter location: credenza in hallway&#39;, &#39;Access &amp; Arrival&#39;, &#39;Parsed from Airbnb Listing (#8923411) • Edited 2 days ago by Alex&#39;)">
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-8 h-8 rounded-lg bg-teal-50 text-property-a flex items-center justify-center shrink-0 border border-teal-200">
+                  <span class="material-symbols-outlined text-[18px]">wifi</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-light-secondary text-[11px] font-label uppercase tracking-wider">Wi-Fi Network</span>
+                    <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-code">High Traffic</span>
+                  </div>
+                  <div class="font-code font-semibold text-light-on-surface text-[13px] truncate mt-0.5">Loft_Guest_5G • pass: oceanbreeze44</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button type="button" class="p-1.5 text-light-secondary hover:text-property-a rounded" title="Copy value" onclick="event.preventDefault(); event.stopPropagation(); alert(&#39;Copied Wi-Fi credentials!&#39;)">
+                  <span class="material-symbols-outlined text-[17px]">content_copy</span>
+                </button>
+                <span class="material-symbols-outlined text-light-outline text-[18px]">chevron_right</span>
+              </div>
+            </div>
+
+            <!-- Row 2: Front Door Access Code -->
+            <div data-rule-search="front door yale lock keyless entry code smart keypad pin 4-digit morning" class="rule-row p-3 flex items-center justify-between gap-3 hover:bg-light-surface-container-low transition cursor-pointer" onclick="openInlineEditor(&#39;Front Door Yale Lock&#39;, &#39;Yale Smart Keypad: 4-digit code generated morning of arrival and messaged 2 hours prior to 4 PM check-in.&#39;, &#39;Access &amp; Arrival&#39;, &#39;Synced from Yale Access Integration • Auto-managed&#39;)">
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200">
+                  <span class="material-symbols-outlined text-[18px]">lock</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <span class="text-light-secondary text-[11px] font-label uppercase tracking-wider block">Keyless Entry Code</span>
+                  <div class="font-label font-semibold text-light-on-surface text-[13px] truncate mt-0.5">Yale Smart Keypad (Sent arrival morning)</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="material-symbols-outlined text-light-outline text-[18px]">chevron_right</span>
+              </div>
+            </div>
+
+            <!-- Category 2: Timings & Rates -->
+            <div class="category-header px-3.5 py-1.5 bg-slate-50 border-y border-light-outline-variant/60 flex items-center justify-between sticky top-0 z-10">
+              <span class="font-label text-[11px] uppercase tracking-wider text-light-secondary font-semibold">Timings &amp; Rates</span>
+              <span class="text-[10px] text-light-secondary font-code">2 rules</span>
+            </div>
+
+            <!-- Row 3: Check-in / Check-out Windows -->
+            <div data-rule-search="timings check-in check-out 4:00 pm 11:00 am early bag drop" class="rule-row p-3 flex items-center justify-between gap-3 hover:bg-light-surface-container-low transition cursor-pointer" onclick="openInlineEditor(&#39;Check-in / Check-out&#39;, &#39;Standard Check-in: 4:00 PM\nStandard Check-out: 11:00 AM\nEarly bag drop permitted after 1:00 PM upon host confirmation.&#39;, &#39;Timings &amp; Rates&#39;, &#39;Host Direct Policy • Verified&#39;)">
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0 border border-indigo-200">
+                  <span class="material-symbols-outlined text-[18px]">schedule</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <span class="text-light-secondary text-[11px] font-label uppercase tracking-wider block">Timings</span>
+                  <div class="font-label font-semibold text-light-on-surface text-[13px] truncate mt-0.5">In: 4:00 PM • Out: 11:00 AM</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="material-symbols-outlined text-light-outline text-[18px]">chevron_right</span>
+              </div>
+            </div>
+
+            <!-- Row 4: Pricing Floor & Negotiation Policy -->
+            <div data-rule-search="price floor pricing nightly rate floor 185 140 negotiation guardrail" class="rule-row p-3 flex items-center justify-between gap-3 hover:bg-light-surface-container-low transition cursor-pointer" onclick="openInlineEditor(&#39;Nightly Rate Floor&#39;, &#39;$185/night baseline guardrail. Agent may auto-counter down to $185; holds inquiries below this floor for manual host review.&#39;, &#39;Timings &amp; Rates&#39;, &#39;Host Negotiation Rule • Co-host Guardrail&#39;)">
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
+                  <span class="material-symbols-outlined text-[18px]">payments</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-light-secondary text-[11px] font-label uppercase tracking-wider">Price Floor</span>
+                    <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-code">Agent Guardrail</span>
+                  </div>
+                  <div class="font-label font-semibold text-light-on-surface text-[13px] truncate mt-0.5">$185/night (Floor auto-counter limit)</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="material-symbols-outlined text-light-outline text-[18px]">chevron_right</span>
+              </div>
+            </div>
+
+            <!-- Category 3: Amenities & Operations -->
+            <div class="category-header px-3.5 py-1.5 bg-slate-50 border-y border-light-outline-variant/60 flex items-center justify-between sticky top-0 z-10">
+              <span class="font-label text-[11px] uppercase tracking-wider text-light-secondary font-semibold">Amenities &amp; Rules</span>
+              <span class="text-[10px] text-light-secondary font-code">4 rules</span>
+            </div>
+
+            <!-- Row 5: Parking Spot Assignment -->
+            <div data-rule-search="parking driveway spot street curb minivan designated" class="rule-row p-3 flex items-center justify-between gap-3 hover:bg-light-surface-container-low transition cursor-pointer" onclick="openInlineEditor(&#39;Parking Allocation&#39;, &#39;1 dedicated off-street driveway space on left side + free unmetered street parking along Pacific Ave.&#39;, &#39;Amenities &amp; Rules&#39;, &#39;Property Manual • Section 3&#39;)">
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center shrink-0 border border-sky-200">
+                  <span class="material-symbols-outlined text-[18px]">directions_car</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <span class="text-light-secondary text-[11px] font-label uppercase tracking-wider block">Parking</span>
+                  <div class="font-label font-semibold text-light-on-surface text-[13px] truncate mt-0.5">1 Driveway spot + free street curb</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="material-symbols-outlined text-light-outline text-[18px]">chevron_right</span>
+              </div>
+            </div>
+
+            <!-- Row 6: Trash, Recycling & Pickup Days -->
+            <div data-rule-search="waste pickup trash recycling tuesday evenings curb side stairs" class="rule-row p-3 flex items-center justify-between gap-3 hover:bg-light-surface-container-low transition cursor-pointer" onclick="openInlineEditor(&#39;Trash &amp; Recycling&#39;, &#39;Roll black trash &amp; blue recycling bins to curb on Tuesday evenings by 8 PM. Store under side stairs at all other times.&#39;, &#39;Amenities &amp; Rules&#39;, &#39;City Sanitation Schedule • Verified&#39;)">
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-700 flex items-center justify-center shrink-0 border border-zinc-200">
+                  <span class="material-symbols-outlined text-[18px]">delete_outline</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <span class="text-light-secondary text-[11px] font-label uppercase tracking-wider block">Waste Pickup</span>
+                  <div class="font-label font-semibold text-light-on-surface text-[13px] truncate mt-0.5">Tuesday evenings (Bins under side stairs)</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="material-symbols-outlined text-light-outline text-[18px]">chevron_right</span>
+              </div>
+            </div>
+
+            <!-- Row 7: Quiet Hours & Sound Policies -->
+            <div data-rule-search="noise restrictions quiet hours 10:00 pm 8:00 am minut monitor sound" class="rule-row p-3 flex items-center justify-between gap-3 hover:bg-light-surface-container-low transition cursor-pointer" onclick="openInlineEditor(&#39;Quiet Hours&#39;, &#39;10:00 PM – 8:00 AM strictly enforced by HOA. Decibel monitor installed in living room (Minut).&#39;, &#39;Amenities &amp; Rules&#39;, &#39;HOA By-Laws • Section 4.2&#39;)">
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0 border border-purple-200">
+                  <span class="material-symbols-outlined text-[18px]">volume_off</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <span class="text-light-secondary text-[11px] font-label uppercase tracking-wider block">Noise Restrictions</span>
+                  <div class="font-label font-semibold text-light-on-surface text-[13px] truncate mt-0.5">10:00 PM – 8:00 AM (Minut monitor installed)</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="material-symbols-outlined text-light-outline text-[18px]">chevron_right</span>
+              </div>
+            </div>
+
+            <!-- Row 8: Pet Policy -->
+            <div data-rule-search="pet policy dogs cleaning fee cats travel crib" class="rule-row p-3 flex items-center justify-between gap-3 hover:bg-light-surface-container-low transition cursor-pointer" onclick="openInlineEditor(&#39;Pet Policy&#39;, &#39;Dogs allowed with $50 flat cleaning fee. Strictly no cats due to severe host allergy.&#39;, &#39;Amenities &amp; Rules&#39;, &#39;Listing House Rules • Verified&#39;)">
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-8 h-8 rounded-lg bg-orange-50 text-orange-700 flex items-center justify-center shrink-0 border border-orange-200">
+                  <span class="material-symbols-outlined text-[18px]">pets</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <span class="text-light-secondary text-[11px] font-label uppercase tracking-wider block">Pet Policy</span>
+                  <div class="font-label font-semibold text-light-on-surface text-[13px] truncate mt-0.5">Dogs OK ($50 cleaning fee) • No cats allowed</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="material-symbols-outlined text-light-outline text-[18px]">chevron_right</span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- 3RD CARD: Dedicated Vendor Contacts Card -->
+        <section class="bg-white rounded-lg border border-light-outline-variant p-3.5 shadow-sm flex flex-col gap-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-property-a text-[18px]">contact_phone</span>
+              <h2 class="font-label text-label-md text-light-on-surface">Vendor Contacts</h2>
+            </div>
+            <button type="button" class="text-property-a text-label-sm font-label flex items-center gap-0.5 hover:underline" onclick="alert(&#39;Add new vendor contact&#39;)">
+              <span class="material-symbols-outlined text-[15px]">add</span> Add
+            </button>
+          </div>
+
+          <div class="flex flex-col gap-2 text-body-sm">
+            <!-- Vendor 1 -->
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-light-surface-container-low border border-light-outline-variant/70 hover:bg-light-surface-container transition">
+              <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <span class="material-symbols-outlined text-light-secondary text-[18px] shrink-0">plumbing</span>
+                <div class="min-w-0 flex-1">
+                  <span class="font-label text-[12px] font-semibold text-light-on-surface block leading-tight">Bay Plumbing (Urgent)</span>
+                  <span class="text-[11px] text-light-secondary font-code">(831) 555-0199 • Acct #44</span>
+                </div>
+              </div>
+              <a href="tel:8315550199" class="p-1.5 text-light-secondary hover:text-property-a transition shrink-0" title="Call vendor">
+                <span class="material-symbols-outlined text-[18px]">call</span>
+              </a>
+            </div>
+
+            <!-- Vendor 2 -->
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-light-surface-container-low border border-light-outline-variant/70 hover:bg-light-surface-container transition">
+              <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <span class="material-symbols-outlined text-light-secondary text-[18px] shrink-0">cleaning_services</span>
+                <div class="min-w-0 flex-1">
+                  <span class="font-label text-[12px] font-semibold text-light-on-surface block leading-tight">Elena Rostova (Turnover)</span>
+                  <span class="text-[11px] text-light-secondary font-code">(831) 555-2910 • SMS priority</span>
+                </div>
+              </div>
+              <a href="tel:8315552910" class="p-1.5 text-light-secondary hover:text-property-a transition shrink-0" title="Call vendor">
+                <span class="material-symbols-outlined text-[18px]">call</span>
+              </a>
+            </div>
+
+            <!-- Vendor 3 -->
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-light-surface-container-low border border-light-outline-variant/70 hover:bg-light-surface-container transition">
+              <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <span class="material-symbols-outlined text-light-secondary text-[18px] shrink-0">key</span>
+                <div class="min-w-0 flex-1">
+                  <span class="font-label text-[12px] font-semibold text-light-on-surface block leading-tight">Coastal Key (Locksmith)</span>
+                  <span class="text-[11px] text-light-secondary font-code">(831) 555-7741 • Master #9011</span>
+                </div>
+              </div>
+              <a href="tel:8315557741" class="p-1.5 text-light-secondary hover:text-property-a transition shrink-0" title="Call vendor">
+                <span class="material-symbols-outlined text-[18px]">call</span>
+              </a>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Bottom Nav in House Details -->
+      <nav class="fixed bottom-0 left-0 right-0 max-w-[420px] mx-auto bg-white border-t border-light-outline-variant px-8 py-2 flex items-center justify-between z-30 shadow-lg">
+        <button type="button" onclick="goToStep(&#39;queue&#39;)" class="flex flex-col items-center gap-0.5 text-light-secondary hover:text-light-on-surface font-label text-[11px] transition">
+          <span class="material-symbols-outlined text-[22px]">inbox</span>
+          <span>Messages</span>
+        </button>
+        <button type="button" onclick="goToStep(&#39;house-details&#39;)" class="flex flex-col items-center gap-0.5 text-light-primary font-label text-[11px] transition">
+          <span class="material-symbols-outlined text-[22px]">menu_book</span>
+          <span>House Details</span>
+        </button>
+        <button type="button" onclick="goToStep(&#39;account&#39;)" class="flex flex-col items-center gap-0.5 text-light-secondary hover:text-light-on-surface font-label text-[11px] transition">
+          <span class="material-symbols-outlined text-[22px]">person</span>
+          <span>Account</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Bottom Sheet / Drawer Modal Shell for House Details Rule Editing -->
+    <div id="ruleEditModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-end justify-center transition-opacity">
+      <div class="bg-white w-full max-w-[420px] rounded-t-2xl shadow-2xl border-t border-light-outline-variant flex flex-col max-h-[90vh] animate-in slide-in-from-bottom duration-200">
+        
+        <!-- Drawer Grab Handle -->
+        <div class="pt-3 pb-1 flex justify-center">
+          <div class="w-10 h-1 bg-slate-300 rounded-full"></div>
+        </div>
+
+        <!-- Drawer Header: Clean Static Title -->
+        <div class="px-5 py-3.5 border-b border-light-outline-variant flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-property-a text-[20px]">edit_note</span>
+            <h2 id="ruleModalTitle" class="font-headline text-headline-sm text-light-on-surface leading-tight">Rule Details</h2>
+          </div>
+          <button type="button" onclick="closeInlineEditor()" class="w-8 h-8 rounded-full bg-light-surface-container-low border border-light-outline-variant flex items-center justify-center text-light-secondary hover:text-light-on-surface transition" aria-label="Close drawer">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+
+        <!-- Drawer Scrollable Form Body -->
+        <form id="ruleEditForm" onsubmit="event.preventDefault(); saveRuleValue();" class="p-5 flex flex-col gap-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+          
+          <!-- Field 1: Rule Label / Identifier -->
+          <div class="space-y-1.5">
+            <label for="ruleLabelInput" class="block font-label text-[11px] uppercase tracking-wider text-light-secondary font-semibold">
+              Rule Topic / Key
+            </label>
+            <input type="text" id="ruleLabelInput" value="Wi-Fi Network" class="w-full bg-white border border-light-outline-variant rounded-lg px-3 py-2 text-body-sm text-light-on-surface focus:outline-none focus:border-property-a focus-visible:ring-2 focus-visible:ring-property-a shadow-xs">
+            <span class="text-[11px] text-light-secondary block">Used as the lookup key when the AI scans house facts.</span>
+          </div>
+
+          <!-- Field 2: Ground Truth Value (Prompt Context) -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label for="ruleModalInput" class="block font-label text-[11px] uppercase tracking-wider text-light-secondary font-semibold">
+                Ground Truth Value
+              </label>
+              <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-code">Exact AI Context</span>
+            </div>
+            <textarea id="ruleModalInput" rows="3" class="w-full bg-white border border-light-outline-variant rounded-lg p-3 text-body-sm font-code text-light-on-surface focus:outline-none focus:border-property-a focus-visible:ring-2 focus-visible:ring-property-a shadow-xs"></textarea>
+            <span class="text-[11px] text-light-secondary block">The co-host agent extracts exact phrases or credentials from this text when replying.</span>
+          </div>
+
+          <!-- Field 3: Category Assignment -->
+          <div class="space-y-1.5">
+            <label for="ruleCategoryInput" class="block font-label text-[11px] uppercase tracking-wider text-light-secondary font-semibold">
+              Category Section
+            </label>
+            <select id="ruleCategoryInput" class="w-full bg-white border border-light-outline-variant rounded-lg px-3 py-2 text-body-sm text-light-on-surface focus:outline-none focus:border-property-a focus-visible:ring-2 focus-visible:ring-property-a shadow-xs">
+              <option value="Access &amp; Arrival">Access &amp; Arrival</option>
+              <option value="Timings &amp; Rates">Timings &amp; Rates</option>
+              <option value="Amenities &amp; Rules">Amenities &amp; Rules</option>
+            </select>
+          </div>
+
+          <!-- Field 4: Origin & Verification Metadata -->
+          <div class="p-3 bg-light-surface-container-low rounded-lg border border-light-outline-variant/80 flex items-start gap-2.5">
+            <span class="material-symbols-outlined text-property-a text-[18px] shrink-0 mt-0.5">verified_user</span>
+            <div class="text-[11px] leading-tight">
+              <span class="font-semibold text-light-on-surface block">Synced Origin</span>
+              <span id="ruleOriginText" class="text-light-secondary">Parsed from Airbnb Listing (#8923411) • Edited 2 days ago by Alex</span>
+            </div>
+          </div>
+
+          <!-- Actions: Primary Save & Destructive Delete -->
+          <div class="pt-2 flex flex-col gap-2.5">
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="closeInlineEditor()" class="flex-1 py-2.5 text-center rounded-lg border border-light-outline-variant font-label text-label-md text-light-secondary hover:bg-light-surface-container-low transition">
+                Cancel
+              </button>
+              <button type="button" onclick="saveRuleValue()" class="flex-1 py-2.5 text-center rounded-lg bg-property-a text-white font-label text-label-md hover:opacity-95 shadow-sm transition">
+                Save Changes
+              </button>
+            </div>
+
+            <!-- Quiet Delete Rule Trigger -->
+            <button type="button" class="w-full py-1 text-center font-label text-[12px] text-rose-600 hover:text-rose-700 hover:underline transition flex items-center justify-center gap-1" onclick="deleteRuleValue()">
+              <span class="material-symbols-outlined text-[15px]">delete</span>
+              <span>Delete Rule</span>
+            </button>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- STEP 3.5: IMPORT HOUSE KNOWLEDGE SOURCES -->
+    <!-- ========================================== -->
+    <div id="viewImport" class="hidden flex flex-col flex-1 pb-24">
+      <!-- Screen Header -->
+      <header class="px-4 py-3 border-b border-light-outline-variant bg-light-surface sticky top-8 z-20 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="goToStep(&#39;house-details&#39;)" class="w-8 h-8 rounded-full bg-light-surface-container-low border border-light-outline-variant flex items-center justify-center text-light-on-surface hover:bg-light-surface-container transition" aria-label="Cancel Import">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+          <div>
+            <h1 class="font-headline text-headline-sm text-light-on-surface leading-tight">Import House Details</h1>
+            <!-- Target Property Indicator -->
+            <div class="flex items-center gap-1.5 text-body-sm text-light-secondary">
+              <span id="importPropDot" class="w-2 h-2 rounded-full bg-property-a"></span>
+              <span id="importPropTitle" class="font-label text-label-sm text-property-a font-semibold">Property A • Coastal Loft</span>
+            </div>
+          </div>
+        </div>
+        <span class="text-[11px] font-code text-property-a bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+          AI Extraction
+        </span>
+      </header>
+
+      <!-- Main Content Area: Import Methods & Live Parse Review -->
+      <main class="px-4 py-3 flex flex-col gap-4 flex-1">
+
+        <!-- STEP 1: CHOOSE IMPORT SOURCE -->
+        <section class="flex flex-col gap-2">
+          <label class="font-label text-label-sm text-light-on-surface flex items-center justify-between">
+            <span>Choose Knowledge Source</span>
+            <span class="text-light-secondary text-[11px]">Auto-updates AI answers</span>
+          </label>
+
+          <!-- Segmented Source Selector Tabs (2 Bulk Onboarding Paths: Airbnb Link, PDF Guidebook) -->
+          <div class="grid grid-cols-2 p-1 bg-light-surface-container rounded-lg gap-1 text-center font-label text-[12px]">
+            <button type="button" id="tabImportLink" onclick="switchImportTab(&#39;link&#39;)" class="py-2 px-2 rounded-md bg-white text-light-on-surface shadow-sm font-semibold transition flex flex-col items-center gap-1">
+              <span class="material-symbols-outlined text-[18px] text-property-a">link</span>
+              <span>Airbnb Link</span>
+            </button>
+            <button type="button" id="tabImportDoc" onclick="switchImportTab(&#39;doc&#39;)" class="py-2 px-2 rounded-md text-light-secondary hover:text-light-on-surface transition flex flex-col items-center gap-1">
+              <span class="material-symbols-outlined text-[18px]">upload_file</span>
+              <span>PDF Guidebook</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- SOURCE PANEL 1: AIRBNB LINK INPUT -->
+        <div id="panelImportLink" class="bg-white rounded-lg border border-light-outline-variant p-3.5 shadow-sm flex flex-col gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label for="airbnbUrlInput" class="font-label text-label-sm text-light-on-surface">Airbnb Listing URL</label>
+            <div class="flex items-center gap-2">
+              <div class="flex-1 relative">
+                <span class="material-symbols-outlined text-[18px] text-light-secondary absolute left-3 top-2.5">home</span>
+                <input id="airbnbUrlInput" type="url" value="https://airbnb.com/rooms/8492014" class="w-full bg-light-surface-container-low border border-light-outline-variant rounded-md pl-9 pr-3 py-2 text-body-sm text-light-on-surface focus:border-property-a focus:ring-0 outline-none">
+              </div>
+              <button type="button" onclick="simulateExtract()" class="bg-light-primary text-light-on-primary px-3.5 py-2 rounded-md font-label text-label-sm hover:opacity-90 active:scale-95 transition shrink-0 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[16px]">sync</span>
+                <span>Re-Parse</span>
+              </button>
+            </div>
+            <p class="text-[11px] text-light-secondary">Pulls check-in times, pet policies, parking spots, and house rules directly from your public listing.</p>
+          </div>
+        </div>
+
+        <!-- SOURCE PANEL 2: PDF / DOC UPLOAD -->
+        <div id="panelImportDoc" class="hidden bg-white rounded-lg border border-light-outline-variant p-3.5 shadow-sm flex-col gap-3">
+          <div class="border-2 border-dashed border-light-outline-variant rounded-lg p-5 flex flex-col items-center justify-center gap-2 bg-light-surface-container-low/50 hover:bg-light-surface-container-low transition cursor-pointer" onclick="document.getElementById(&#39;importDocFileInput&#39;).click()">
+            <input id="importDocFileInput" type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="handleDocSelect(this)">
+            <div class="w-10 h-10 rounded-full bg-light-surface-container flex items-center justify-center text-property-a">
+              <span class="material-symbols-outlined text-[22px]">upload_file</span>
+            </div>
+            <div class="text-center">
+              <span class="font-label text-label-md text-light-on-surface block">Upload Welcome Guide or House Manual</span>
+              <span class="text-[11px] text-light-secondary">PDF, Word (.docx), or plain text (up to 20MB)</span>
+            </div>
+          </div>
+
+          <div id="importDocSuccessBox" class="p-2.5 bg-green-50 rounded-lg border border-green-200 flex items-center justify-between text-body-sm text-green-900">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
+              <span id="importDocName" class="font-label text-[13px]">Coastal_Loft_Guidebook_2026.pdf</span>
+            </div>
+            <span class="text-[11px] font-code text-green-700">Ready to parse</span>
+          </div>
+
+          <div class="p-2 bg-teal-50/70 rounded-md border border-teal-200 flex items-center justify-between text-body-sm text-teal-950">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[17px] text-property-a">auto_awesome</span>
+              <span class="text-[12px] font-label">Extracted 5 granular operational rules from pages 1–3</span>
+            </div>
+            <span class="text-[11px] font-code text-property-a">98% match</span>
+          </div>
+        </div>
+
+        <!-- STEP 2: EXTRACTED FACTS REVIEW & DIFF -->
+        <section class="flex flex-col gap-2.5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="font-headline text-headline-sm text-light-on-surface flex items-center gap-1.5">
+                <span>Parsed Rules to Merge</span>
+                <span id="parsedRulesCountBadge" class="px-2 py-0.5 rounded-full bg-teal-50 text-property-a border border-teal-200 text-[11px] font-code">
+                  4 detected
+                </span>
+              </h2>
+              <p class="text-body-sm text-light-secondary">Select or edit the ground truth before saving.</p>
+            </div>
+            <button type="button" onclick="selectAllFacts()" class="text-property-a font-label text-label-sm hover:underline">
+              Select All
+            </button>
+          </div>
+
+          <!-- Detected Fact Checkcards -->
+          <div class="bg-white rounded-lg border border-light-outline-variant divide-y divide-light-outline-variant shadow-sm text-body-sm">
+            
+            <!-- Fact 1 -->
+            <label class="p-3 flex items-start gap-3 cursor-pointer hover:bg-light-surface-container-low transition">
+              <input type="checkbox" checked class="import-fact-cb mt-0.5 w-4 h-4 rounded text-property-a focus:ring-0 cursor-pointer shrink-0">
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-label text-label-md text-light-on-surface">Parking Allowance</span>
+                  <span class="text-[10px] font-code text-teal-800 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">Listing amenity</span>
+                </div>
+                <p class="text-light-secondary text-[12px] text-pretty mt-0.5">
+                  &#34;1 dedicated off-street driveway spot, plus free unmetered curb parking right out front.&#34;
+                </p>
+              </div>
+            </label>
+
+            <!-- Fact 2 -->
+            <label class="p-3 flex items-start gap-3 cursor-pointer hover:bg-light-surface-container-low transition">
+              <input type="checkbox" checked class="import-fact-cb mt-0.5 w-4 h-4 rounded text-property-a focus:ring-0 cursor-pointer shrink-0">
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-label text-label-md text-light-on-surface">Entry &amp; Keypad Access</span>
+                  <span class="text-[10px] font-code text-teal-800 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">Check-in guide</span>
+                </div>
+                <p class="text-light-secondary text-[12px] text-pretty mt-0.5">
+                  &#34;3 low wooden porch steps. Keyless Yale keypad code sent arrival morning at 9:00 AM.&#34;
+                </p>
+              </div>
+            </label>
+
+            <!-- Fact 3 -->
+            <label class="p-3 flex items-start gap-3 cursor-pointer hover:bg-light-surface-container-low transition">
+              <input type="checkbox" checked class="import-fact-cb mt-0.5 w-4 h-4 rounded text-property-a focus:ring-0 cursor-pointer shrink-0">
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-label text-label-md text-light-on-surface">Check-in / Bag Drop Window</span>
+                  <span class="text-[10px] font-code text-teal-800 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">House rules</span>
+                </div>
+                <p class="text-light-secondary text-[12px] text-pretty mt-0.5">
+                  &#34;Standard check-in 4:00 PM / check-out 11:00 AM. Early bag drop allowed upon advance request.&#34;
+                </p>
+              </div>
+            </label>
+
+            <!-- Fact 4 -->
+            <label class="p-3 flex items-start gap-3 cursor-pointer hover:bg-light-surface-container-low transition">
+              <input type="checkbox" checked class="import-fact-cb mt-0.5 w-4 h-4 rounded text-property-a focus:ring-0 cursor-pointer shrink-0">
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-label text-label-md text-light-on-surface">Wi-Fi &amp; Router Details</span>
+                  <span class="text-[10px] font-code text-teal-800 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">Guest manual</span>
+                </div>
+                <p class="text-light-secondary text-[12px] text-pretty mt-0.5">
+                  &#34;Netgear Nighthawk 5GHz in entry credenza. Network: CoastalLoft-Guest, Key on fridge magnet.&#34;
+                </p>
+              </div>
+            </label>
+
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Bottom Action Dock (Sticky Confirmation Bar) -->
+      <div class="fixed bottom-0 left-0 right-0 max-w-[420px] mx-auto bg-white/95 backdrop-blur-sm border-t border-light-outline-variant p-3 flex items-center justify-between gap-3 z-30 shadow-xl">
+        <button type="button" onclick="goToStep(&#39;house-details&#39;)" class="px-4 py-2.5 rounded-md text-light-secondary hover:text-light-on-surface font-label text-label-md transition">
+          Cancel
+        </button>
+        <button type="button" onclick="saveImportedFactsAndReturn()" class="flex-1 bg-property-a text-white py-2.5 px-4 rounded-md font-label text-label-md hover:opacity-90 active:scale-95 transition shadow-sm flex items-center justify-center gap-1.5">
+          <span class="material-symbols-outlined text-[18px]">verified</span>
+          <span>Approve &amp; Merge into AI</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- STEP 4: USER & CO-HOST ACCOUNT SETTINGS -->
+    <!-- ========================================== -->
+    <div id="viewAccount" class="hidden flex flex-col flex-1 pb-20">
+      <!-- Screen Header -->
+      <header class="px-4 py-3 border-b border-light-outline-variant bg-light-surface sticky top-8 z-20 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="goToStep(&#39;queue&#39;)" class="w-8 h-8 rounded-full bg-light-surface-container-low border border-light-outline-variant flex items-center justify-center text-light-on-surface hover:bg-light-surface-container transition" aria-label="Back to Messages">
+            <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+          </button>
+          <div>
+            <h1 class="font-headline text-headline-sm text-light-on-surface leading-tight">Host Account &amp; Preferences</h1>
+            <p class="text-body-sm text-light-secondary font-label">Profile, Shared Voice &amp; Alerts</p>
+          </div>
+        </div>
+        <span class="text-body-sm text-success font-label flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-success"></span> Synced
+        </span>
+      </header>
+
+      <!-- Main Content Area: Personal & Co-Host Configuration -->
+      <main class="px-4 py-3 flex flex-col gap-4 flex-1">
+        <!-- SECTION 1: USER PROFILE & CO-HOST ROLE -->
+        <section class="flex flex-col gap-2">
+          <div>
+            <h2 class="font-headline text-headline-sm text-light-on-surface">Your Profile</h2>
+            <p class="text-body-sm text-light-secondary">Logged-in host account and co-ownership partnership.</p>
+          </div>
+
+          <div class="bg-white rounded-lg border border-light-outline-variant p-3.5 shadow-sm flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-indigo-100 text-claimed-host-a flex items-center justify-center font-headline text-[15px] border border-indigo-200">
+                A
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-label text-label-md text-light-on-surface">Alex</span>
+                  <span class="px-1.5 py-0.2 rounded text-[10px] font-code bg-indigo-50 text-claimed-host-a border border-indigo-200">Host A</span>
+                </div>
+                <p class="text-body-sm text-light-secondary">Co-hosting with Jordan</p>
+              </div>
+            </div>
+            <button type="button" class="shrink-0 text-light-secondary hover:text-light-on-surface text-label-sm font-label flex items-center gap-1 px-2.5 py-1.5 rounded-md hover:bg-light-surface-container-low transition whitespace-nowrap" onclick="alert(&#39;Signed out of Haven.&#39;)">
+              <span class="material-symbols-outlined text-[16px]">logout</span>
+              <span>Sign out</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- SECTION 2: SHARED VOICE & LEARNED EDIT HISTORY -->
+        <section class="flex flex-col gap-2">
+          <div>
+            <h2 class="font-headline text-headline-sm text-light-on-surface">Shared Voice &amp; Learned Edits</h2>
+            <p class="text-body-sm text-light-secondary">How the AI agent adapts to your writing style.</p>
+          </div>
+
+          <div class="bg-white rounded-lg border border-light-outline-variant p-3.5 shadow-sm flex flex-col gap-2.5">
+            <div class="flex items-center justify-between text-body-sm">
+              <span class="font-label text-label-md text-light-on-surface">Voice Calibration</span>
+              <span class="px-2.5 py-0.5 rounded-full bg-light-primary-container text-light-on-primary-container text-label-sm font-label">
+                Warm Concierge
+              </span>
+            </div>
+            <p class="text-body-sm text-light-secondary">
+              Short, welcoming sentences; never overly formal; proactive arrival reassurance.
+            </p>
+            <div class="border-t border-light-outline-variant pt-2 flex items-center justify-between text-body-sm">
+              <div class="flex items-center gap-1.5 text-light-secondary">
+                <span class="material-symbols-outlined text-[16px] text-light-primary">history_edu</span>
+                <span>38 replies logged and learned</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3: PER-HOST NOTIFICATION ROUTING -->
+        <section class="flex flex-col gap-2">
+          <div>
+            <h2 class="font-headline text-headline-sm text-light-on-surface">Co-Owner Notification Routing</h2>
+            <p class="text-body-sm text-light-secondary">Independent alert preferences for Host A and Host B.</p>
+          </div>
+
+          <div class="bg-white rounded-lg border border-light-outline-variant divide-y divide-light-outline-variant shadow-sm">
+            <div class="p-3 flex items-center justify-between">
+              <div class="pr-2">
+                <div class="font-label text-label-md text-light-on-surface flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[17px] text-light-primary">notifications_active</span>
+                  <span>Host A: Android Push Alerts</span>
+                </div>
+                <p class="text-body-sm text-light-secondary">Instant tap-to-review notifications on guest messages.</p>
+              </div>
+              <input type="checkbox" checked class="w-5 h-5 rounded text-light-primary focus:ring-0 cursor-pointer shrink-0">
+            </div>
+
+            <div class="p-3 flex items-center justify-between">
+              <div class="pr-2">
+                <div class="font-label text-label-md text-light-on-surface flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[17px] text-claimed-host-b">people_outline</span>
+                  <span>Host B Status Sync Notifications</span>
+                </div>
+                <p class="text-body-sm text-light-secondary">Quiet vibration when partner claims or marks sent.</p>
+              </div>
+              <input type="checkbox" checked class="w-5 h-5 rounded text-light-primary focus:ring-0 cursor-pointer shrink-0">
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Bottom Nav in Account -->
+      <nav class="fixed bottom-0 left-0 right-0 max-w-[420px] mx-auto bg-white border-t border-light-outline-variant px-8 py-2 flex items-center justify-between z-30 shadow-lg">
+        <button type="button" onclick="goToStep(&#39;queue&#39;)" class="flex flex-col items-center gap-0.5 text-light-secondary hover:text-light-on-surface font-label text-[11px] transition">
+          <span class="material-symbols-outlined text-[22px]">inbox</span>
+          <span>Messages</span>
+        </button>
+        <button type="button" onclick="goToStep(&#39;house-details&#39;)" class="flex flex-col items-center gap-0.5 text-light-secondary hover:text-light-on-surface font-label text-[11px] transition">
+          <span class="material-symbols-outlined text-[22px]">menu_book</span>
+          <span>House Details</span>
+        </button>
+        <button type="button" onclick="goToStep(&#39;account&#39;)" class="flex flex-col items-center gap-0.5 text-light-primary font-label text-[11px] transition">
+          <span class="material-symbols-outlined text-[22px]">person</span>
+          <span>Account</span>
+        </button>
+      </nav>
+    </div>
+
+  </div>
+
+  <script>
+    let currentProp = 'A'; // 'A' | 'B'
+    let currentGuest = 'marcus'; // 'marcus' | 'sarah'
+    let queueFilter = 'all'; // 'all' | 'needs-reply' | 'addressed'
+    let marcusStatus = 'unanswered'; // 'unanswered' | 'addressed'
+    let sarahStatus = 'unanswered'; // 'unanswered' | 'addressed'
+
+    function togglePropMenu() {
+      const menu = document.getElementById('propDropdown');
+      menu.classList.toggle('hidden');
+    }
+
+    function switchActiveProperty(prop) {
+      currentProp = prop;
+      document.getElementById('propDropdown').classList.add('hidden');
+
+      const dot = document.getElementById('queuePropDot');
+      const subtitle = document.getElementById('queuePropSubtitle');
+      const btnA = document.getElementById('btnPropA');
+      const btnB = document.getElementById('btnPropB');
+      const checkA = document.getElementById('checkIconA');
+      const checkB = document.getElementById('checkIconB');
+
+      const dotHD = document.getElementById('houseDetailsPropDot');
+      const titleHD = document.getElementById('houseDetailsPropTitle');
+      const dotImport = document.getElementById('importPropDot');
+      const titleImport = document.getElementById('importPropTitle');
+
+      if (prop === 'A') {
+        currentGuest = 'marcus';
+        dot.className = 'w-2 h-2 rounded-full bg-property-a';
+        subtitle.className = 'font-label text-label-sm text-property-a font-semibold';
+        subtitle.textContent = 'Property A • Coastal Loft';
+
+        if (dotHD) dotHD.className = 'w-2 h-2 rounded-full bg-property-a';
+        if (titleHD) {
+          titleHD.className = 'font-label text-label-sm text-property-a font-semibold';
+          titleHD.textContent = 'Property A • Coastal Loft';
+        }
+        if (dotImport) dotImport.className = 'w-2 h-2 rounded-full bg-property-a';
+        if (titleImport) {
+          titleImport.className = 'font-label text-label-sm text-property-a font-semibold';
+          titleImport.textContent = 'Property A • Coastal Loft';
+        }
+
+        btnA.className = 'w-full flex items-center justify-between p-2 rounded-md transition text-left bg-teal-50 border border-teal-200';
+        btnB.className = 'w-full flex items-center justify-between p-2 rounded-md transition text-left border border-transparent hover:bg-light-surface-container-low';
+        checkA.classList.remove('hidden');
+        checkB.classList.add('hidden');
+      } else {
+        currentGuest = 'sarah';
+        dot.className = 'w-2 h-2 rounded-full bg-property-b';
+        subtitle.className = 'font-label text-label-sm text-property-b font-semibold';
+        subtitle.textContent = 'Property B • Mountain Chalet';
+
+        if (dotHD) dotHD.className = 'w-2 h-2 rounded-full bg-property-b';
+        if (titleHD) {
+          titleHD.className = 'font-label text-label-sm text-property-b font-semibold';
+          titleHD.textContent = 'Property B • Mountain Chalet';
+        }
+        if (dotImport) dotImport.className = 'w-2 h-2 rounded-full bg-property-b';
+        if (titleImport) {
+          titleImport.className = 'font-label text-label-sm text-property-b font-semibold';
+          titleImport.textContent = 'Property B • Mountain Chalet';
+        }
+
+        btnB.className = 'w-full flex items-center justify-between p-2 rounded-md transition text-left bg-amber-50 border border-amber-200';
+        btnA.className = 'w-full flex items-center justify-between p-2 rounded-md transition text-left border border-transparent hover:bg-light-surface-container-low';
+        checkB.classList.remove('hidden');
+        checkA.classList.add('hidden');
+      }
+
+      updateQueueCardsVisibility();
+    }
+
+    let filterStatus = 'all'; // 'all' | 'needs-reply' | 'flagged' | 'sent'
+    let filterStage = 'all';  // 'all' | 'inquiry' | 'confirmed' | 'current'
+    let currentSearchTerm = '';
+
+    function toggleFilterPopover() {
+      const popover = document.getElementById('filterPopover');
+      popover.classList.toggle('hidden');
+    }
+
+    function handleSearchInput(value) {
+      currentSearchTerm = value.trim().toLowerCase();
+      const clearBtn = document.getElementById('searchClearBtn');
+      if (currentSearchTerm.length > 0) {
+        clearBtn.classList.remove('hidden');
+        clearBtn.classList.add('flex');
+      } else {
+        clearBtn.classList.add('hidden');
+        clearBtn.classList.remove('flex');
+      }
+      applyAllQueueFilters();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('searchInput');
+      input.value = '';
+      currentSearchTerm = '';
+      const clearBtn = document.getElementById('searchClearBtn');
+      clearBtn.classList.add('hidden');
+      clearBtn.classList.remove('flex');
+      applyAllQueueFilters();
+    }
+
+    function setQuickFilter(type, value) {
+      if (type === 'status') {
+        filterStatus = value;
+        document.querySelectorAll('.filter-status').forEach(btn => {
+          if (btn.getAttribute('data-val') === value) {
+            btn.className = 'filter-chip filter-status px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-light-primary text-light-on-primary border border-light-primary';
+          } else {
+            btn.className = 'filter-chip filter-status px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-white text-light-secondary border border-light-outline-variant hover:border-light-primary';
+          }
+        });
+      } else if (type === 'stage') {
+        filterStage = value;
+        document.querySelectorAll('.filter-stage').forEach(btn => {
+          if (btn.getAttribute('data-val') === value) {
+            btn.className = 'filter-chip filter-stage px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-light-primary text-light-on-primary border border-light-primary';
+          } else {
+            btn.className = 'filter-chip filter-stage px-2.5 py-0.5 rounded-full text-label-sm font-label transition-all bg-white text-light-secondary border border-light-outline-variant hover:border-light-primary';
+          }
+        });
+      }
+
+      // Update active filter count pill inside Filter button
+      const filterPill = document.getElementById('activeFilterPill');
+      let activeCount = 0;
+      if (filterStatus !== 'all') activeCount++;
+      if (filterStage !== 'all') activeCount++;
+
+      if (filterPill) {
+        if (activeCount > 0) {
+          filterPill.textContent = activeCount;
+          filterPill.classList.remove('hidden');
+          filterPill.classList.add('inline-flex');
+        } else {
+          filterPill.classList.add('hidden');
+          filterPill.classList.remove('inline-flex');
+        }
+      }
+
+      applyAllQueueFilters();
+    }
+
+    function updateQueueCardsVisibility() {
+      applyAllQueueFilters();
+    }
+
+    function applyAllQueueFilters() {
+      const cardMarcusActive = document.getElementById('cardMarcusSection');
+      const cardMarcusDone = document.getElementById('cardMarcusAddressed');
+      const cardJulian = document.getElementById('cardJulianSection');
+      const cardSarahActive = document.getElementById('cardSarahSection');
+      const cardSarahDone = document.getElementById('cardSarahAddressed');
+
+      // Helper to evaluate a card
+      function testCard(card, targetProp, isSentState) {
+        if (!card) return false;
+        // 1. Property match
+        if (targetProp !== currentProp) return false;
+
+        // 2. Sent / addressed state check
+        const cardStatus = card.getAttribute('data-status') || '';
+        const cardStage = card.getAttribute('data-stage') || '';
+        const cardSearch = (card.getAttribute('data-search') || '') + ' ' + card.innerText.toLowerCase();
+
+        // 3. Status filter match
+        let matchesStatus = true;
+        if (filterStatus === 'needs-reply') {
+          matchesStatus = (cardStatus === 'drafted' || cardStatus === 'review');
+        } else if (filterStatus === 'flagged') {
+          matchesStatus = (cardStatus === 'review');
+        } else if (filterStatus === 'sent') {
+          matchesStatus = (cardStatus === 'sent');
+        }
+
+        // 4. Stage filter match
+        let matchesStage = true;
+        if (filterStage !== 'all') {
+          matchesStage = (cardStage === filterStage);
+        }
+
+        // 5. Search query match
+        let matchesSearch = true;
+        if (currentSearchTerm.length > 0) {
+          matchesSearch = cardSearch.includes(currentSearchTerm);
+        }
+
+        return matchesStatus && matchesStage && matchesSearch;
+      }
+
+      // Hide all first
+      if (cardMarcusActive) cardMarcusActive.classList.add('hidden');
+      if (cardMarcusDone) cardMarcusDone.classList.add('hidden');
+      if (cardJulian) cardJulian.classList.add('hidden');
+      if (cardSarahActive) cardSarahActive.classList.add('hidden');
+      if (cardSarahDone) cardSarahDone.classList.add('hidden');
+
+      if (currentProp === 'A') {
+        if (marcusStatus === 'unanswered') {
+          if (testCard(cardMarcusActive, 'A')) cardMarcusActive.classList.remove('hidden');
+        } else {
+          if (testCard(cardMarcusDone, 'A')) cardMarcusDone.classList.remove('hidden');
+        }
+
+        if (testCard(cardJulian, 'A')) {
+          cardJulian.classList.remove('hidden');
+        }
+      } else {
+        if (sarahStatus === 'unanswered') {
+          if (testCard(cardSarahActive, 'B')) cardSarahActive.classList.remove('hidden');
+        } else {
+          if (testCard(cardSarahDone, 'B')) cardSarahDone.classList.remove('hidden');
+        }
+      }
+    }
+
+    function openGuestJourney(guest) {
+      currentGuest = guest;
+      updateGuestContextUI(guest);
+      goToStep('dialogue');
+    }
+
+    function updateGuestContextUI(guest) {
+      const dialogueTitle = document.getElementById('dialogueHeaderTitle');
+      const dialogueSubtitle = document.getElementById('dialogueHeaderSubtitle');
+      const contentMarcus = document.getElementById('dialogueContentMarcus');
+      const contentSarah = document.getElementById('dialogueContentSarah');
+      const drawerFeedMarcus = document.getElementById('drawerFeedMarcus');
+      const drawerFeedSarah = document.getElementById('drawerFeedSarah');
+      const drawerTitle = document.getElementById('drawerTitle');
+
+      const btnThreadPrimary = document.getElementById('threadActionPrimaryBtn');
+
+      const threadJulian = document.getElementById('threadFeedJulian');
+
+      if (guest === 'julian') {
+        const threadTitle = document.getElementById('threadScreenTitle');
+        const threadSub = document.getElementById('threadScreenSubtitle');
+        const threadMarcus = document.getElementById('threadFeedMarcus');
+        const threadSarah = document.getElementById('threadFeedSarah');
+
+        if (threadTitle) threadTitle.textContent = 'Julian T. (Nov 15 – 19)';
+        if (threadSub) threadSub.textContent = 'Coastal Loft • Current Guest Thread';
+        if (threadJulian) threadJulian.classList.remove('hidden');
+        if (threadMarcus) threadMarcus.classList.add('hidden');
+        if (threadSarah) threadSarah.classList.add('hidden');
+
+        if (btnThreadPrimary) {
+          btnThreadPrimary.classList.remove('hidden');
+          btnThreadPrimary.innerHTML = '<span class="material-symbols-outlined text-[18px] text-green-300">done_all</span><span>Resolved by Host B • Back to Messages</span>';
+          btnThreadPrimary.onclick = () => goToStep('queue');
+        }
+
+        contentMarcus.classList.add('hidden');
+        contentSarah.classList.add('hidden');
+      } else if (guest === 'marcus') {
+        if (btnThreadPrimary) {
+          btnThreadPrimary.onclick = () => goToStep('dialogue');
+        }
+        dialogueTitle.textContent = 'Marcus L. (Nov 21 – 25)';
+        dialogueSubtitle.textContent = 'Coastal Loft • Draft & Coach';
+        dialogueSubtitle.className = 'text-body-sm text-property-a font-label';
+
+        const threadTitle = document.getElementById('threadScreenTitle');
+        const threadSub = document.getElementById('threadScreenSubtitle');
+        const threadMarcus = document.getElementById('threadFeedMarcus');
+        const threadSarah = document.getElementById('threadFeedSarah');
+        const bubbleMarcus = document.getElementById('threadSentBubbleMarcus');
+
+        if (threadTitle) threadTitle.textContent = 'Marcus L. (Nov 21 – 25)';
+        if (threadSub) threadSub.textContent = 'Coastal Loft • Full Conversation History';
+        if (threadJulian) threadJulian.classList.add('hidden');
+        if (threadMarcus) threadMarcus.classList.remove('hidden');
+        if (threadSarah) threadSarah.classList.add('hidden');
+
+        if (bubbleMarcus) {
+          if (marcusStatus === 'addressed') {
+            bubbleMarcus.classList.remove('hidden');
+            bubbleMarcus.classList.add('flex');
+          } else {
+            bubbleMarcus.classList.add('hidden');
+            bubbleMarcus.classList.remove('flex');
+          }
+        }
+
+        if (btnThreadPrimary) {
+          if (marcusStatus === 'addressed') {
+            btnThreadPrimary.innerHTML = '<span class="material-symbols-outlined text-[18px] text-green-300">done_all</span><span>Reply Sent • Reopen Draft</span>';
+          } else {
+            btnThreadPrimary.innerHTML = '<span class="material-symbols-outlined text-[18px] text-teal-300">auto_awesome</span><span>Review AI Draft Reply</span>';
+          }
+        }
+
+        contentMarcus.classList.remove('hidden');
+        contentSarah.classList.add('hidden');
+      } else {
+        if (btnThreadPrimary) {
+          btnThreadPrimary.onclick = () => goToStep('dialogue');
+        }
+        dialogueTitle.textContent = 'Sarah K. (Dec 12 – 17)';
+        dialogueSubtitle.textContent = 'Mountain Chalet • Counter-Offer Discussion';
+        dialogueSubtitle.className = 'text-body-sm text-property-b font-label';
+
+        const threadTitle = document.getElementById('threadScreenTitle');
+        const threadSub = document.getElementById('threadScreenSubtitle');
+        const threadMarcus = document.getElementById('threadFeedMarcus');
+        const threadSarah = document.getElementById('threadFeedSarah');
+        const bubbleSarah = document.getElementById('threadSentBubbleSarah');
+
+        if (threadTitle) threadTitle.textContent = 'Sarah K. (Dec 12 – 17)';
+        if (threadSub) threadSub.textContent = 'Mountain Chalet • Full Conversation History';
+        if (threadJulian) threadJulian.classList.add('hidden');
+        if (threadMarcus) threadMarcus.classList.add('hidden');
+        if (threadSarah) threadSarah.classList.remove('hidden');
+
+        if (bubbleSarah) {
+          if (sarahStatus === 'addressed') {
+            bubbleSarah.classList.remove('hidden');
+            bubbleSarah.classList.add('flex');
+          } else {
+            bubbleSarah.classList.add('hidden');
+            bubbleSarah.classList.remove('flex');
+          }
+        }
+
+        if (btnThreadPrimary) {
+          if (sarahStatus === 'addressed') {
+            btnThreadPrimary.innerHTML = '<span class="material-symbols-outlined text-[18px] text-green-300">done_all</span><span>Counter Sent • Reopen Discussion</span>';
+          } else {
+            btnThreadPrimary.innerHTML = '<span class="material-symbols-outlined text-[18px] text-amber-300">auto_awesome</span><span>Review AI Counter Reply</span>';
+          }
+        }
+
+        contentMarcus.classList.add('hidden');
+        contentSarah.classList.remove('hidden');
+      }
+    }
+
+    function goToStep(step) {
+      const q = document.getElementById('viewQueue');
+      const d = document.getElementById('viewDialogue');
+      const th = document.getElementById('viewThread');
+      const hd = document.getElementById('viewHouseDetails');
+      const imp = document.getElementById('viewImport');
+      const ac = document.getElementById('viewAccount');
+
+      const pillQ = document.getElementById('stepPillQueue');
+      const pillTh = document.getElementById('stepPillThread');
+      const pillD = document.getElementById('stepPillDialogue');
+      const pillHD = document.getElementById('stepPillHouseDetails');
+      const pillImp = document.getElementById('stepPillImport');
+      const pillAC = document.getElementById('stepPillAccount');
+
+      q.classList.add('hidden');
+      d.classList.add('hidden');
+      if (th) th.classList.add('hidden');
+      if (hd) hd.classList.add('hidden');
+      if (imp) imp.classList.add('hidden');
+      if (ac) ac.classList.add('hidden');
+
+      const inactivePill = 'px-1.5 py-0.5 rounded text-slate-300 hover:text-white';
+      const activePill = 'px-1.5 py-0.5 rounded bg-white/20 text-white font-semibold';
+
+      if (pillQ) pillQ.className = inactivePill;
+      if (pillTh) pillTh.className = inactivePill;
+      if (pillD) pillD.className = inactivePill;
+      if (pillHD) pillHD.className = inactivePill;
+      if (pillImp) pillImp.className = inactivePill;
+      if (pillAC) pillAC.className = inactivePill;
+
+      // Update bottom nav highlights across views
+      const updateNavBtn = (btnId, active) => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+          if (active) {
+            btn.className = 'flex flex-col items-center gap-0.5 text-light-primary font-label text-[11px] transition';
+          } else {
+            btn.className = 'flex flex-col items-center gap-0.5 text-light-secondary hover:text-light-on-surface font-label text-[11px] transition';
+          }
+        }
+      };
+
+      updateNavBtn('navBtnMessages', step === 'queue' || step === 'thread');
+      updateNavBtn('navBtnHouseDetails', step === 'house-details' || step === 'import');
+      updateNavBtn('navBtnAccount', step === 'account');
+
+      if (step === 'queue') {
+        q.classList.remove('hidden');
+        if (pillQ) pillQ.className = activePill;
+        updateQueueCardsVisibility();
+      } else if (step === 'thread') {
+        updateGuestContextUI(currentGuest);
+        if (th) th.classList.remove('hidden');
+        if (pillTh) pillTh.className = activePill;
+      } else if (step === 'dialogue') {
+        updateGuestContextUI(currentGuest);
+        d.classList.remove('hidden');
+        if (pillD) pillD.className = activePill;
+      } else if (step === 'house-details') {
+        if (hd) hd.classList.remove('hidden');
+        if (pillHD) pillHD.className = activePill;
+      } else if (step === 'import') {
+        if (imp) imp.classList.remove('hidden');
+        if (pillImp) pillImp.className = activePill;
+      } else if (step === 'account') {
+        if (ac) ac.classList.remove('hidden');
+        if (pillAC) pillAC.className = activePill;
+      }
+
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    function toggleInlineEdit(textId, areaId, btn) {
+      const p = document.getElementById(textId);
+      const ta = document.getElementById(areaId);
+      if (!p || !ta) return;
+
+      const isEditing = !ta.classList.contains('hidden');
+      if (isEditing) {
+        // Save edit back to paragraph
+        p.textContent = ta.value;
+        ta.classList.add('hidden');
+        p.classList.remove('hidden');
+        btn.innerHTML = '<span class="material-symbols-outlined text-[13px]">edit</span><span>Edit</span>';
+      } else {
+        // Switch to textarea
+        ta.value = p.textContent.trim();
+        p.classList.add('hidden');
+        ta.classList.remove('hidden');
+        ta.focus();
+        btn.innerHTML = '<span class="material-symbols-outlined text-[13px] text-success">done</span><span class="text-success font-semibold">Done</span>';
+      }
+    }
+
+    function handleCopy(btn, textId, areaId) {
+      let copyText = '';
+      if (areaId) {
+        const ta = document.getElementById(areaId);
+        const p = document.getElementById(textId);
+        if (ta && !ta.classList.contains('hidden')) {
+          copyText = ta.value;
+        } else if (p) {
+          copyText = p.textContent.trim();
+        }
+      }
+
+      if (navigator.clipboard && copyText) {
+        navigator.clipboard.writeText(copyText).catch(() => {});
+      }
+
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[14px]">done</span><span>Copied!</span>';
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 2000);
+    }
+
+    function handleMarkSent(btn) {
+      if (currentGuest === 'marcus') {
+        marcusStatus = 'addressed';
+        // Pull latest draft copy (from draft 2 textarea or paragraph)
+        const ta2 = document.getElementById('draftArea2');
+        const p2 = document.getElementById('draftText2');
+        const sentContent = (ta2 && !ta2.classList.contains('hidden')) ? ta2.value : (p2 ? p2.textContent.trim() : '');
+        const preview = document.getElementById('marcusSentQuotePreview');
+        if (preview && sentContent) {
+          const truncated = sentContent.length > 55 ? sentContent.slice(0, 55) + '...' : sentContent;
+          preview.innerHTML = '<span class="font-medium text-light-on-surface">Sent by You:</span> ' + truncated;
+        }
+      } else if (currentGuest === 'sarah') {
+        sarahStatus = 'addressed';
+        const taS = document.getElementById('draftAreaSarah');
+        const pS = document.getElementById('draftTextSarah');
+        const sentContent = (taS && !taS.classList.contains('hidden')) ? taS.value : (pS ? pS.textContent.trim() : '');
+        const preview = document.getElementById('sarahSentQuotePreview');
+        if (preview && sentContent) {
+          const truncated = sentContent.length > 55 ? sentContent.slice(0, 55) + '...' : sentContent;
+          preview.innerHTML = '<span class="font-medium text-light-on-surface">Sent by You:</span> ' + truncated;
+        }
+      }
+
+      // Switch to queue view to show the addressed card
+      goToStep('queue');
+    }
+
+    // ==========================================
+    // HOUSE DETAILS TAB INTERACTIVE HANDLERS
+    // ==========================================
+    function toggleKnowledgeSection() {
+      const list = document.getElementById('knowledgeItemsList');
+      const icon = document.getElementById('knowledgeToggleIcon');
+      if (!list || !icon) return;
+      if (list.classList.contains('hidden')) {
+        list.classList.remove('hidden');
+        icon.textContent = 'expand_less';
+      } else {
+        list.classList.add('hidden');
+        icon.textContent = 'expand_more';
+      }
+    }
+
+    function filterHouseRules(query) {
+      const term = query.trim().toLowerCase();
+      const rows = document.querySelectorAll('.rule-row');
+      const headers = document.querySelectorAll('.category-header');
+
+      rows.forEach(row => {
+        const text = (row.getAttribute('data-rule-search') || '') + ' ' + row.innerText.toLowerCase();
+        if (!term || text.includes(term)) {
+          row.classList.remove('hidden');
+          row.classList.add('flex');
+        } else {
+          row.classList.add('hidden');
+          row.classList.remove('flex');
+        }
+      });
+    }
+
+    let currentEditingRow = null;
+
+    function openInlineEditor(title, val, category = 'Access & Arrival', origin = 'Parsed from Airbnb Listing (#8923411) • Edited 2 days ago by Alex') {
+      const modal = document.getElementById('ruleEditModal');
+      const modalTitle = document.getElementById('ruleModalTitle');
+      const labelInput = document.getElementById('ruleLabelInput');
+      const modalInput = document.getElementById('ruleModalInput');
+      const categoryInput = document.getElementById('ruleCategoryInput');
+      const originText = document.getElementById('ruleOriginText');
+
+      if (!modal || !modalTitle || !labelInput || !modalInput || !categoryInput) return;
+
+      const isNew = !title || title === 'New Operational Value';
+      modalTitle.textContent = isNew ? 'Add Rule' : 'Rule Details';
+      labelInput.value = isNew ? '' : title;
+      modalInput.value = val || '';
+      categoryInput.value = category;
+      if (originText) {
+        originText.textContent = isNew ? 'Custom Host Rule • Created just now' : origin;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeInlineEditor() {
+      const modal = document.getElementById('ruleEditModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function saveRuleValue() {
+      const label = document.getElementById('ruleLabelInput')?.value || 'Rule';
+      alert(`Rule "${label}" saved! The co-host agent will now reference this ground truth for subsequent guest replies.`);
+      closeInlineEditor();
+    }
+
+    function deleteRuleValue() {
+      const label = document.getElementById('ruleLabelInput')?.value || 'this rule';
+      if (confirm(`Delete "${label}"? The AI agent will no longer reference it.`)) {
+        alert(`Rule "${label}" deleted.`);
+        closeInlineEditor();
+      }
+    }
+
+    // ==========================================
+    // IMPORT HOUSE DETAILS TAB HANDLERS
+    // ==========================================
+    function switchImportTab(source) {
+      const tabLink = document.getElementById('tabImportLink');
+      const tabDoc = document.getElementById('tabImportDoc');
+      const pLink = document.getElementById('panelImportLink');
+      const pDoc = document.getElementById('panelImportDoc');
+      const countBadge = document.getElementById('parsedRulesCountBadge');
+
+      const inactiveTab = 'py-2 px-2 rounded-md text-light-secondary hover:text-light-on-surface transition flex flex-col items-center gap-1';
+      const activeTab = 'py-2 px-2 rounded-md bg-white text-light-on-surface shadow-sm font-semibold transition flex flex-col items-center gap-1';
+
+      if (tabLink) tabLink.className = inactiveTab;
+      if (tabDoc) tabDoc.className = inactiveTab;
+
+      if (pLink) { pLink.classList.add('hidden'); pLink.classList.remove('flex'); }
+      if (pDoc) { pDoc.classList.add('hidden'); pDoc.classList.remove('flex'); }
+
+      if (source === 'link') {
+        if (tabLink) tabLink.className = activeTab;
+        if (pLink) { pLink.classList.remove('hidden'); pLink.classList.add('flex'); }
+        if (countBadge) countBadge.textContent = '4 detected';
+      } else if (source === 'doc') {
+        if (tabDoc) tabDoc.className = activeTab;
+        if (pDoc) { pDoc.classList.remove('hidden'); pDoc.classList.add('flex'); }
+        if (countBadge) countBadge.textContent = '5 detected';
+      }
+    }
+
+    function handleDocSelect(input) {
+      if (input.files && input.files[0]) {
+        const docName = document.getElementById('importDocName');
+        const box = document.getElementById('importDocSuccessBox');
+        if (docName) docName.textContent = input.files[0].name;
+        if (box) box.classList.remove('hidden');
+      }
+    }
+
+    function simulateExtract() {
+      const url = document.getElementById('airbnbUrlInput')?.value || 'listing';
+      alert(`Scraping latest facts from ${url}...\n4 live rules refreshed from public listing!`);
+    }
+
+    function selectAllFacts() {
+      const checkboxes = document.querySelectorAll('.import-fact-cb');
+      checkboxes.forEach(cb => cb.checked = true);
+    }
+
+    function saveImportedFactsAndReturn() {
+      const checkedCount = document.querySelectorAll('.import-fact-cb:checked').length;
+      alert(`Merged ${checkedCount} approved rules into the Co-Host AI knowledge base!\nGround truth updated.`);
+      goToStep('house-details');
+    }
+
+    // Initialize initial queue state
+    updateQueueCardsVisibility();
+  </script>
+
+</body></html>
