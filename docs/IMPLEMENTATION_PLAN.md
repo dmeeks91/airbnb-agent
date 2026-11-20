@@ -178,7 +178,7 @@ airbnb-agent/
         │   ├── coachRoutes.ts              # POST /api/coach/turn, /api/threads/:id/sent, /dismiss
         │   ├── knowledgeRoutes.ts          # POST /api/knowledge/extract (paste + PDF + one-liner)
         │   ├── unmatchedRoutes.ts          # POST /api/unmatched/:id/assign
-        │   └── internalRoutes.ts           # POST /api/internal/gmail-push, /renew-watch (OIDC)
+        │   └── internalRoutes.ts           # POST /api/internal/gmail-push, /renew-watch, /backfill (OIDC)
         ├── middleware/
         │   ├── requireHostAuth.ts          # Firebase ID token + email_verified + allowlist check
         │   └── requireGoogleOidc.ts        # Pub/Sub & Cloud Scheduler OIDC token verification
@@ -193,6 +193,7 @@ airbnb-agent/
         │   ├── messageFingerprint.ts       # Dual-inbox message content fingerprinting for dedupe
         │   ├── promptBuilder.ts            # Inquiry Access-rule redaction + active rules + voice diffs
         │   ├── gmailClient.ts              # Workspace Internal OAuth + history diff + watch renewal
+        │   ├── backfillService.ts          # Silent one-time label scan + .eml bundle unwrapping
         │   ├── ingestionService.ts         # Two-layer dedupe, thread merge, co-host sync, FCM trigger
         │   └── pushNotifier.ts             # FCM Android Web Push + stale token cleanup
         └── __tests__/

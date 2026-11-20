@@ -231,6 +231,10 @@ function sanitizeIdPart(raw: string): string {
   return cleaned || String(Date.now());
 }
 
+export interface ProcessEmailOptions {
+  sendPush?: boolean;
+}
+
 export class IngestionService {
   private readonly storage: IngestionStorageAdapter;
   private readonly push: IngestionPushAdapter;
@@ -243,6 +247,7 @@ export class IngestionService {
   public async processRawEmail(
     rawEmail: string | Buffer | Uint8Array,
     gmailMessageId: string,
+    options: ProcessEmailOptions = {},
   ): Promise<IngestionOutcome> {
     // Layer 1 Deduplication: gmailMessageId check
     if (await this.storage.hasProcessedEmail(gmailMessageId)) {
@@ -254,11 +259,15 @@ export class IngestionService {
     }
 
     const parsed = await parseAirbnbEmail(rawEmail, { gmailMessageId });
-    return this.processParsedEmail(parsed);
+    return this.processParsedEmail(parsed, options);
   }
 
-  public async processParsedEmail(parsed: ParsedAirbnbEmail): Promise<IngestionOutcome> {
+  public async processParsedEmail(
+    parsed: ParsedAirbnbEmail,
+    options: ProcessEmailOptions = {},
+  ): Promise<IngestionOutcome> {
     const gmailMessageId = parsed.gmailMessageId;
+    const sendPush = options.sendPush ?? true;
 
     if (await this.storage.hasProcessedEmail(gmailMessageId)) {
       return {
@@ -332,18 +341,20 @@ export class IngestionService {
         threadId: null,
       });
 
-      await this.push.sendAlert({
-        title: `Unmatched Airbnb email from ${guestName}`,
-        body: 'Tap to assign property before drafting.',
-        view: 'messages',
-      });
+      if (sendPush) {
+        await this.push.sendAlert({
+          title: `Unmatched Airbnb email from ${guestName}`,
+          body: 'Tap to assign property before drafting.',
+          view: 'messages',
+        });
+      }
 
       return {
         outcome: 'unmatched',
         gmailMessageId,
         unmatchedId,
         reason: match.reason,
-        pushSent: true,
+        pushSent: sendPush,
       };
     }
 
@@ -359,7 +370,7 @@ export class IngestionService {
       parsed,
       preferredThreadId: match.existingThreadId,
       recordProcessed: true,
-      sendPush: true,
+      sendPush,
     });
   }
 

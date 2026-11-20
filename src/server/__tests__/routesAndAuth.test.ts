@@ -417,6 +417,7 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
           usedFallbackList: false,
         };
       },
+      listLabelMessagesSince: async () => ['gm-backfill-1'],
       fetchRawMessage: async () => sampleFixture,
       getProfileHistoryId: async () => '200999',
       renewWatch: async () => {
@@ -490,5 +491,49 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
     expect(repo.getIngestionHealth().status).toBe('error');
     expect(repo.getIngestionHealth().lastError).toContain('OAuth refresh token revoked');
     expect(pushAlerts[pushAlerts.length - 1]?.title).toContain('Watch Renewal Failed');
+
+    // 5. Internal backfill runs silently without sending push alerts
+    const alertsBeforeBackfill = pushAlerts.length;
+    const backfillRes = await fetch(`${baseUrl}/api/internal/backfill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ days: 30, autoDismissOlderThanHours: 48 }),
+    });
+    expect(backfillRes.status).toBe(200);
+    const backfillJson: unknown = await backfillRes.json();
+    expect(isRecord(backfillJson) && backfillJson.ok).toBe(true);
+    expect(isRecord(backfillJson) && backfillJson.scannedGmailMessages).toBe(1);
+    expect(pushAlerts.length).toBe(alertsBeforeBackfill);
+
+    // 6. Verify /api/internal/backfill enforces scheduler OIDC middleware when wired
+    const guardedApp = express();
+    guardedApp.use(express.json());
+    guardedApp.use(
+      '/api',
+      createApiRouter({
+        repository: repo,
+        schedulerOidcMiddleware: createRequireGoogleOidc({
+          expectedServiceAccount: 'cohost-scheduler@demo.iam.gserviceaccount.com',
+          audience: 'https://cohost.example.run.app',
+          verifyOidcToken: async () => ({
+            email: 'wrong@demo.iam.gserviceaccount.com',
+            email_verified: true,
+          }),
+        }),
+        createGmailClient: () => fakeGmail,
+      }),
+    );
+    const { baseUrl: guardedUrl } = await startTestApp(guardedApp);
+    expect((await fetch(`${guardedUrl}/api/internal/backfill`, { method: 'POST' })).status).toBe(
+      401,
+    );
+    expect(
+      (
+        await fetch(`${guardedUrl}/api/internal/backfill`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer wrong-sa' },
+        })
+      ).status,
+    ).toBe(403);
   });
 });

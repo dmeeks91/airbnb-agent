@@ -19,6 +19,11 @@ export interface GmailSyncClient {
     startHistoryId: string | null,
     labelId: string,
   ): Promise<GmailHistorySyncResult>;
+  listLabelMessagesSince(
+    labelId: string,
+    days: number,
+    maxMessages?: number,
+  ): Promise<string[]>;
   fetchRawMessage(gmailMessageId: string): Promise<Buffer>;
   renewWatch(topicName: string, labelId: string): Promise<GmailWatchResult>;
   getProfileHistoryId(): Promise<string | null>;
@@ -233,6 +238,55 @@ export class WorkspaceGmailClient implements GmailSyncClient {
       latestHistoryId: profileHistoryId,
       usedFallbackList: true,
     };
+  }
+
+  public async listLabelMessagesSince(
+    labelId: string,
+    days: number,
+    maxMessages = 250,
+  ): Promise<string[]> {
+    const safeDays = Math.max(1, Math.min(365, Math.floor(days)));
+    const safeMax = Math.max(1, Math.min(500, Math.floor(maxMessages)));
+    const messageIds: string[] = [];
+    let pageToken: string | undefined;
+
+    while (messageIds.length < safeMax) {
+      const pageLimit = Math.min(100, safeMax - messageIds.length);
+      const params = new URLSearchParams({
+        labelIds: labelId,
+        q: `newer_than:${safeDays}d`,
+        maxResults: String(pageLimit),
+      });
+      if (pageToken) {
+        params.set('pageToken', pageToken);
+      }
+
+      const response = await this.gmailFetch(`/messages?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error(`Gmail label search failed (${response.status})`);
+      }
+
+      const data: unknown = await response.json();
+      if (!isRecord(data)) {
+        break;
+      }
+
+      if (Array.isArray(data.messages)) {
+        for (const msg of data.messages) {
+          if (isRecord(msg) && typeof msg.id === 'string') {
+            messageIds.push(msg.id);
+          }
+        }
+      }
+
+      if (typeof data.nextPageToken === 'string' && data.nextPageToken.trim()) {
+        pageToken = data.nextPageToken.trim();
+      } else {
+        break;
+      }
+    }
+
+    return messageIds.reverse();
   }
 
   public async fetchRawMessage(gmailMessageId: string): Promise<Buffer> {

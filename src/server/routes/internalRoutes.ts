@@ -3,6 +3,7 @@ import {
   createPubSubOidcMiddleware,
   createSchedulerOidcMiddleware,
 } from '../middleware/requireGoogleOidc.ts';
+import { runGmailBackfill } from '../services/backfillService.ts';
 import {
   isGmailOAuthConfigured,
   WorkspaceGmailClient,
@@ -210,6 +211,69 @@ export function createInternalRouter(deps: InternalRoutesDeps = {}): Router {
         body: message.slice(0, 140),
         view: 'messages',
       });
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.post('/internal/backfill', schedulerAuth, async (req, res) => {
+    const repo = resolveRepo();
+    try {
+      const gmail = createGmailClient();
+      if (!gmail) {
+        res.status(503).json({ error: 'Gmail OAuth is not configured' });
+        return;
+      }
+
+      const body: unknown = req.body;
+      const rawDays = isRecord(body) && typeof body.days === 'number' ? body.days : 30;
+      const days = Math.max(1, Math.min(90, Number.isFinite(rawDays) ? Math.floor(rawDays) : 30));
+
+      const rawMax =
+        isRecord(body) && typeof body.maxMessages === 'number' ? body.maxMessages : 250;
+      const maxMessages = Math.max(
+        1,
+        Math.min(500, Number.isFinite(rawMax) ? Math.floor(rawMax) : 250),
+      );
+
+      let autoDismissOlderThanHours: number | null = 48;
+      if (isRecord(body) && 'autoDismissOlderThanHours' in body) {
+        const rawHours = body.autoDismissOlderThanHours;
+        if (rawHours === null || rawHours === 0) {
+          autoDismissOlderThanHours = null;
+        } else if (typeof rawHours === 'number' && Number.isFinite(rawHours) && rawHours > 0) {
+          autoDismissOlderThanHours = rawHours;
+        }
+      }
+
+      const labelName = process.env.GMAIL_WATCHED_LABEL?.trim() || 'Co-Host';
+      const state = await repo.getIngestionState();
+      const labelId = state.watchedLabelId || (await gmail.resolveLabelId(labelName));
+      if (!labelId) {
+        throw new Error(`Gmail label "${labelName}" not found`);
+      }
+
+      const summary = await runGmailBackfill(gmail, repo, {
+        labelId,
+        days,
+        maxMessages,
+        autoDismissOlderThanHours,
+      });
+
+      const profileHistoryId = await gmail.getProfileHistoryId();
+      const nextHistoryId = maxNumericString(state.lastHistoryId, profileHistoryId);
+      await repo.updateIngestionState({
+        watchedLabelId: labelId,
+        lastHistoryId: nextHistoryId,
+      });
+
+      res.json({
+        ok: true,
+        days,
+        autoDismissOlderThanHours,
+        ...summary,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gmail backfill failed';
       res.status(500).json({ error: message });
     }
   });
