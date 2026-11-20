@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# One-time GCP Pub/Sub Push & 3-Day Cloud Scheduler setup for Haven Co-Host (Stage 5)
+# Usage:
+#   GOOGLE_CLOUD_PROJECT=your-project \
+#   CLOUD_RUN_URL=https://haven-cohost-xxxxx-uc.a.run.app \
+#   REGION=us-central1 \
+#   ./scripts/setup-gcp-triggers.sh
+
+PROJECT_ID="${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT}"
+CLOUD_RUN_URL="${CLOUD_RUN_URL:?Set CLOUD_RUN_URL (no trailing slash)}"
+REGION="${REGION:-us-central1}"
+
+TOPIC_NAME="haven-gmail-push"
+SUBSCRIPTION_NAME="haven-gmail-push-sub"
+PUBSUB_SA="haven-pubsub-push@${PROJECT_ID}.iam.gserviceaccount.com"
+SCHEDULER_SA="haven-scheduler@${PROJECT_ID}.iam.gserviceaccount.com"
+SCHEDULER_JOB="haven-renew-gmail-watch"
+
+echo "1. Creating Pub/Sub topic (${TOPIC_NAME}) and granting Gmail API publish access..."
+gcloud pubsub topics create "${TOPIC_NAME}" --project="${PROJECT_ID}" || true
+gcloud pubsub topics add-iam-policy-binding "${TOPIC_NAME}" \
+  --project="${PROJECT_ID}" \
+  --member="serviceAccount:gmail-api-push@system.gserviceaccount.com" \
+  --role="roles/pubsub.publisher"
+
+echo "2. Creating dedicated OIDC service accounts..."
+gcloud iam service-accounts create haven-pubsub-push \
+  --project="${PROJECT_ID}" \
+  --display-name="Haven Pub/Sub Push Invoker" || true
+
+gcloud iam service-accounts create haven-scheduler \
+  --project="${PROJECT_ID}" \
+  --display-name="Haven 3-Day Watch Renewal Invoker" || true
+
+echo "3. Creating authenticated Pub/Sub push subscription -> /api/internal/gmail-push..."
+gcloud pubsub subscriptions create "${SUBSCRIPTION_NAME}" \
+  --project="${PROJECT_ID}" \
+  --topic="${TOPIC_NAME}" \
+  --push-endpoint="${CLOUD_RUN_URL}/api/internal/gmail-push" \
+  --push-auth-service-account="${PUBSUB_SA}" \
+  --push-auth-token-audience="${CLOUD_RUN_URL}" \
+  --ack-deadline=60 || true
+
+echo "4. Creating 3-day Cloud Scheduler job -> /api/internal/renew-watch..."
+gcloud scheduler jobs create http "${SCHEDULER_JOB}" \
+  --project="${PROJECT_ID}" \
+  --location="${REGION}" \
+  --schedule="0 9 */3 * *" \
+  --uri="${CLOUD_RUN_URL}/api/internal/renew-watch" \
+  --http-method=POST \
+  --oidc-service-account-email="${SCHEDULER_SA}" \
+  --oidc-token-audience="${CLOUD_RUN_URL}" || true
+
+echo "Done. Verify INTERNAL_OIDC_AUDIENCE=${CLOUD_RUN_URL} is set on the Cloud Run service."
