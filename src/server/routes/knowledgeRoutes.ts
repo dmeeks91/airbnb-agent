@@ -4,7 +4,7 @@ import type {
   ExtractedRuleCandidate,
   ExtractKnowledgeResponse,
   KnowledgeSourceType,
-} from '../../types/haven.ts';
+} from '../../types/cohost.ts';
 import {
   extractRulesLocally,
   findConflictingRule,
@@ -13,7 +13,7 @@ import { extractFactsWithVertex } from '../config/vertex.ts';
 import { requireHostAuth, type HostAuthRequest } from '../middleware/requireHostAuth.ts';
 import {
   getServerRepository,
-  type HavenServerRepository,
+  type CohostServerRepository,
 } from '../services/serverRepository.ts';
 
 const pdfUpload = multer({
@@ -28,7 +28,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export interface KnowledgeRoutesDeps {
-  repository?: HavenServerRepository;
+  repository?: CohostServerRepository;
   authMiddleware?: RequestHandler;
 }
 

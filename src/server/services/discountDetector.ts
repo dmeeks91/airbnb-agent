@@ -2,7 +2,7 @@ import {
   type DiscountAlert,
   type PayoutAssumption,
   type PropertyPricing,
-} from '../../types/haven.ts';
+} from '../../types/cohost.ts';
 import { calculateBothPayoutModes } from './payoutMath.ts';
 
 const DISCOUNT_INTENT_PATTERN =

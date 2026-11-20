@@ -10,7 +10,7 @@ import type {
   KnowledgeSourceType,
   MarkThreadSentRequest,
   RuleCategory,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 import { getCurrentIdToken } from './firebase.ts';
 
 export class ApiClientError extends Error {

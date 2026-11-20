@@ -71,7 +71,7 @@ export function createRequireHostAuth(deps: RequireHostAuthDeps) {
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean);
       if (allowedEmails.length === 0 || !allowedEmails.includes(email)) {
-        res.status(403).json({ error: 'Account is not on the Haven host allowlist' });
+        res.status(403).json({ error: 'Account is not on the Guest Co-Host allowlist' });
         return;
       }
 

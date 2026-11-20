@@ -4,8 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App.tsx';
 import { createSeedSnapshot } from '../../data/seedData.ts';
-import { createLocalHavenStore, LocalHavenStore } from '../../services/havenStore.ts';
-import type { CoachTurnResponse, ExtractKnowledgeResponse } from '../../types/haven.ts';
+import { createLocalCohostStore, LocalCohostStore } from '../../services/cohostStore.ts';
+import type { CoachTurnResponse, ExtractKnowledgeResponse } from '../../types/cohost.ts';
 
 afterEach(() => {
   cleanup();
@@ -13,11 +13,11 @@ afterEach(() => {
 });
 
 describe('Local dev single source of truth vs Firestore live API mode', () => {
-  it('never calls /api/coach/turn in local mode and reflects LocalHavenStore edits immediately', async () => {
+  it('never calls /api/coach/turn in local mode and reflects LocalCohostStore edits immediately', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
 
-    // Mutate rules & sign-off directly in LocalHavenStore (simulating host edits in House Details)
+    // Mutate rules & sign-off directly in LocalCohostStore (simulating host edits in House Details)
     await store.updatePropertySignOff('prop-coastal-loft', 'Warmly, Local Host Team');
     await store.upsertRule('prop-coastal-loft', {
       id: 'rule-a-timings',
@@ -49,12 +49,12 @@ describe('Local dev single source of truth vs Firestore live API mode', () => {
     expect(document.body.contains(screen.getByText(/Warmly, Local Host Team/))).toBe(true);
   });
 
-  it('never calls /api/knowledge/extract in local mode and checks conflicts against LocalHavenStore rules', async () => {
+  it('never calls /api/knowledge/extract in local mode and checks conflicts against LocalCohostStore rules', async () => {
     const user = userEvent.setup();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
 
-    // Add a custom rule in LocalHavenStore that Express InMemoryServerRepository would never know about
+    // Add a custom rule in LocalCohostStore that Express InMemoryServerRepository would never know about
     await store.upsertRule('prop-coastal-loft', {
       topic: 'Sauna Hours',
       value: 'Sauna runs from 4 PM to 9 PM.',
@@ -148,7 +148,7 @@ describe('Local dev single source of truth vs Firestore live API mode', () => {
       });
     });
 
-    const firestoreModeStore = new LocalHavenStore(createSeedSnapshot(), 'firestore');
+    const firestoreModeStore = new LocalCohostStore(createSeedSnapshot(), 'firestore');
 
     // 1. Verify /api/coach/turn is called in firestore mode
     const { unmount } = render(
@@ -202,7 +202,7 @@ describe('Local dev single source of truth vs Firestore live API mode', () => {
   it('recomputes payout warnings and honors 0% host fee immediately when editing pricing in local mode with zero fetch calls', async () => {
     const user = userEvent.setup();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
 
     render(
       <App store={store} initialPropertyId="prop-mountain-chalet" initialView="house-details" />,
@@ -249,7 +249,7 @@ describe('Local dev single source of truth vs Firestore live API mode', () => {
       }),
     );
 
-    const firestoreModeStore = new LocalHavenStore(createSeedSnapshot(), 'firestore');
+    const firestoreModeStore = new LocalCohostStore(createSeedSnapshot(), 'firestore');
     render(
       <App
         store={firestoreModeStore}

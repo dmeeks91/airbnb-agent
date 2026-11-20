@@ -12,8 +12,8 @@ import {
   signInWithGoogle,
   signOutHost,
 } from './services/firebase.ts';
-import { getHavenStore, type HavenStore } from './services/havenStore.ts';
-import type { HavenAppView } from './types/haven.ts';
+import { getCohostStore, type CohostStore } from './services/cohostStore.ts';
+import type { CohostAppView } from './types/cohost.ts';
 import { formatRelativeTime } from './utils/dateFormat.ts';
 import { AccountView } from './views/AccountView.tsx';
 import { AgentDialogueView } from './views/AgentDialogueView.tsx';
@@ -38,14 +38,14 @@ export interface AuthGateState {
 }
 
 export interface AppProps {
-  store?: HavenStore;
+  store?: CohostStore;
   initialPropertyId?: string;
-  initialView?: HavenAppView;
+  initialView?: CohostAppView;
   initialThreadId?: string | null;
   authGate?: AuthGateState;
 }
 
-function parseHavenAppView(rawView: unknown): HavenAppView | null {
+function parseCohostAppView(rawView: unknown): CohostAppView | null {
   if (
     rawView === 'messages' ||
     rawView === 'dialogue' ||
@@ -62,7 +62,7 @@ function parseHavenAppView(rawView: unknown): HavenAppView | null {
 function readDeepLinkParams(): {
   propertyId: string | null;
   threadId: string | null;
-  view: HavenAppView | null;
+  view: CohostAppView | null;
 } {
   if (typeof window === 'undefined') {
     return { propertyId: null, threadId: null, view: null };
@@ -71,7 +71,7 @@ function readDeepLinkParams(): {
   return {
     propertyId: params.get('propertyId'),
     threadId: params.get('threadId'),
-    view: parseHavenAppView(params.get('view')),
+    view: parseCohostAppView(params.get('view')),
   };
 }
 
@@ -98,7 +98,7 @@ export function App({
   initialThreadId,
   authGate,
 }: AppProps) {
-  const activeStore = store ?? getHavenStore();
+  const activeStore = store ?? getCohostStore();
   const isLiveFirebase = authGate ? authGate.enabled : !store && isFirebaseConfigured();
   const deepLink = useMemo(() => readDeepLinkParams(), []);
 
@@ -111,7 +111,7 @@ export function App({
       activeStore.getSnapshot().properties[0]?.id ??
       '',
   );
-  const [activeView, setActiveView] = useState<HavenAppView>(
+  const [activeView, setActiveView] = useState<CohostAppView>(
     initialView ?? deepLink.view ?? (deepLink.threadId ? 'dialogue' : 'messages'),
   );
   const [activeThreadId, setActiveThreadId] = useState<string | null>(
@@ -143,12 +143,12 @@ export function App({
     }
     const handleSwMessage = (event: MessageEvent) => {
       const data: unknown = event.data;
-      if (!isRecord(data) || data.type !== 'HAVEN_DEEP_LINK') {
+      if (!isRecord(data) || data.type !== 'COHOST_DEEP_LINK') {
         return;
       }
       const targetProp = typeof data.propertyId === 'string' && data.propertyId ? data.propertyId : null;
       const targetThread = typeof data.threadId === 'string' && data.threadId ? data.threadId : null;
-      const targetView = parseHavenAppView(data.view);
+      const targetView = parseCohostAppView(data.view);
 
       if (targetProp) {
         setSelectedPropertyId(targetProp);
@@ -246,7 +246,7 @@ export function App({
         </div>
         <div className="flex flex-col gap-1">
           <h1 className="font-headline text-headline-md text-light-on-surface">
-            Haven Co-Host
+            Guest Co-Host
           </h1>
           <p className="text-body-md text-light-secondary">
             Sign in with your allowlisted Google account to manage guest replies.
@@ -286,8 +286,8 @@ export function App({
           </h1>
           <p className="text-body-md text-light-secondary">
             {!authUser.emailVerified
-              ? `${authUser.email ?? 'This account'} requires a verified Google email address to access Haven Co-Host.`
-              : `${authUser.email ?? 'This account'} is not on the verified host allowlist for Haven Co-Host.`}
+              ? `${authUser.email ?? 'This account'} requires a verified Google email address to access Guest Co-Host.`
+              : `${authUser.email ?? 'This account'} is not on the verified host allowlist for Guest Co-Host.`}
           </p>
         </div>
         <button

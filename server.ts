@@ -35,7 +35,7 @@ async function startServer(): Promise<void> {
   }
 
   app.listen(port, '0.0.0.0', () => {
-    console.log(`Haven Co-Host server running on http://localhost:${port}`);
+    console.log(`Guest Co-Host server running on http://localhost:${port}`);
   });
 }
 

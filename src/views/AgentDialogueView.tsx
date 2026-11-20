@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { PayoutWarningBanner } from '../components/PayoutWarningBanner.tsx';
-import type { GuestThread, Property, ThreadMessage } from '../types/haven.ts';
+import type { GuestThread, Property, ThreadMessage } from '../types/cohost.ts';
 import { formatShortClock } from '../utils/dateFormat.ts';
 import { getPropertyTheme } from '../utils/propertyHelpers.ts';
 
@@ -363,7 +363,7 @@ export function AgentDialogueView({
             <div key={turn.id} className="flex flex-col gap-1.5 max-w-[96%]">
               <div className="flex items-center gap-1.5 text-[11px] font-label font-semibold pl-1">
                 <span className={`w-2 h-2 rounded-full ${theme.dotBg}`} aria-hidden="true" />
-                <span className={theme.text}>Haven Co-Host Agent</span>
+                <span className={theme.text}>Guest Co-Host Agent</span>
                 <span className="font-code font-normal text-light-secondary">
                   Turn {idx + 1} · {formatShortClock(turn.createdAt)}
                 </span>

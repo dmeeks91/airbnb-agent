@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSeedSnapshot } from '../../data/seedData.ts';
-import type { ActiveCoachSession } from '../../types/haven.ts';
+import type { ActiveCoachSession } from '../../types/cohost.ts';
 
 type AuthUserLike = {
   uid: string;
@@ -54,7 +54,7 @@ vi.mock('../firebase.ts', () => ({
   getFirebaseServices: getFirebaseServicesMock,
 }));
 
-import { FirestoreHavenStore } from '../havenStore.ts';
+import { FirestoreCohostStore } from '../cohostStore.ts';
 
 function buildSampleSession(draftText: string): ActiveCoachSession {
   return {
@@ -74,7 +74,7 @@ function buildSampleSession(draftText: string): ActiveCoachSession {
   };
 }
 
-describe('FirestoreHavenStore debounced coach session timer cancellation', () => {
+describe('FirestoreCohostStore debounced coach session timer cancellation', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     setDocMock.mockReset();
@@ -91,7 +91,7 @@ describe('FirestoreHavenStore debounced coach session timer cancellation', () =>
   });
 
   it('cancels a pending debounced coach session write when markThreadSent is called within 300ms', async () => {
-    const store = new FirestoreHavenStore(createSeedSnapshot());
+    const store = new FirestoreCohostStore(createSeedSnapshot());
 
     await store.setThreadCoachSession(
       'prop-coastal-loft',
@@ -122,7 +122,7 @@ describe('FirestoreHavenStore debounced coach session timer cancellation', () =>
   });
 
   it('cancels a pending debounced coach session write when dismissThread is called within 300ms', async () => {
-    const store = new FirestoreHavenStore(createSeedSnapshot());
+    const store = new FirestoreCohostStore(createSeedSnapshot());
 
     await store.setThreadCoachSession(
       'prop-mountain-chalet',
@@ -148,7 +148,7 @@ describe('FirestoreHavenStore debounced coach session timer cancellation', () =>
   });
 
   it('cancels only the targeted thread timer while allowing other threads debounced writes to commit', async () => {
-    const store = new FirestoreHavenStore(createSeedSnapshot());
+    const store = new FirestoreCohostStore(createSeedSnapshot());
 
     await store.setThreadCoachSession(
       'prop-coastal-loft',
@@ -183,7 +183,7 @@ describe('FirestoreHavenStore debounced coach session timer cancellation', () =>
   });
 
   it('immediately clears activeCoachSession and cancels any pending timer when passed null', async () => {
-    const store = new FirestoreHavenStore(createSeedSnapshot());
+    const store = new FirestoreCohostStore(createSeedSnapshot());
 
     await store.setThreadCoachSession(
       'prop-coastal-loft',
@@ -204,7 +204,7 @@ describe('FirestoreHavenStore debounced coach session timer cancellation', () =>
   });
 
   it('skips redundant remote setDoc and cancels pending timers when skipRemoteSync is true', async () => {
-    const store = new FirestoreHavenStore(createSeedSnapshot());
+    const store = new FirestoreCohostStore(createSeedSnapshot());
 
     await store.setThreadCoachSession(
       'prop-coastal-loft',
@@ -235,7 +235,7 @@ describe('FirestoreHavenStore debounced coach session timer cancellation', () =>
 
   it('catches rejected background setDoc writes inside the debounce timer without unhandled rejections', async () => {
     setDocMock.mockRejectedValueOnce(new Error('offline permission-denied'));
-    const store = new FirestoreHavenStore(createSeedSnapshot());
+    const store = new FirestoreCohostStore(createSeedSnapshot());
 
     await store.setThreadCoachSession(
       'prop-coastal-loft',
@@ -267,7 +267,7 @@ describe('FirestoreHavenStore debounced coach session timer cancellation', () =>
       return vi.fn();
     });
 
-    const store = new FirestoreHavenStore(createSeedSnapshot());
+    const store = new FirestoreCohostStore(createSeedSnapshot());
     expect(authCallback).not.toBeNull();
     authCallback!({
       uid: 'u-alex',
@@ -320,7 +320,7 @@ describe('FirestoreHavenStore debounced coach session timer cancellation', () =>
   });
 
   it('prevents an unawaited setThreadCoachSession microtask continuation from scheduling a timer after markThreadSent or dismissThread in the same tick', async () => {
-    const store = new FirestoreHavenStore(createSeedSnapshot());
+    const store = new FirestoreCohostStore(createSeedSnapshot());
 
     // Simulate React onChange (`void onUpdateDraftEdit(...)`) immediately followed by tap on Mark as Sent
     const pendingEdit = store.setThreadCoachSession(

@@ -1,5 +1,5 @@
 import { calculateBothPayoutModes } from '../server/services/payoutMath.ts';
-import type { DiscountAlert, PropertyPricing } from '../types/haven.ts';
+import type { DiscountAlert, PropertyPricing } from '../types/cohost.ts';
 
 /**
  * Recomputes a thread's discount alert payout math against the property's current

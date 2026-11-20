@@ -138,12 +138,12 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
   it('verifies Google OIDC service account email on internal Pub/Sub & Scheduler routes', async () => {
     const app = express();
     const oidc = createRequireGoogleOidc({
-      expectedServiceAccount: 'haven-pubsub@demo.iam.gserviceaccount.com',
-      audience: 'https://haven-cohost.example.run.app',
+      expectedServiceAccount: 'cohost-pubsub@demo.iam.gserviceaccount.com',
+      audience: 'https://cohost.example.run.app',
       verifyOidcToken: async (token) => {
         if (token === 'pubsub-ok') {
           return {
-            email: 'haven-pubsub@demo.iam.gserviceaccount.com',
+            email: 'cohost-pubsub@demo.iam.gserviceaccount.com',
             email_verified: true,
           };
         }
@@ -191,7 +191,7 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
         view: 'dialogue',
       },
       {
-        appOrigin: 'https://haven.example.com',
+        appOrigin: 'https://cohost.example.com',
         loadRecipients: async () => [
           { uid: 'u-alex', tokens: ['tok-live-1', 'tok-dead-2'] },
         ],
@@ -251,7 +251,7 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
     expect(healthRes.status).toBe(200);
     const healthBody: unknown = await healthRes.json();
     expect(isRecord(healthBody) && healthBody.ok).toBe(true);
-    expect(isRecord(healthBody) && healthBody.service).toBe('haven-cohost');
+    expect(isRecord(healthBody) && healthBody.service).toBe('cohost');
 
     // Coach turn on inquiry thread (Sarah) must NOT leak Access & Arrival codes
     const coachRes = await fetch(`${baseUrl}/api/coach/turn`, {
@@ -391,7 +391,7 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
       messages: {},
       unmatchedEmails: [],
     });
-    await repo.updateIngestionState({ lastHistoryId: '200000', watchedLabelId: 'Label_Haven' });
+    await repo.updateIngestionState({ lastHistoryId: '200000', watchedLabelId: 'Label_Cohost' });
 
     const sampleFixture = await fs.readFile(
       path.resolve(process.cwd(), 'src/server/__tests__/fixtures/airbnb_digest_single_guest.eml'),
@@ -402,7 +402,7 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
     let simulateWatchFailure = false;
 
     const fakeGmail: GmailSyncClient = {
-      resolveLabelId: async () => 'Label_Haven',
+      resolveLabelId: async () => 'Label_Cohost',
       listHistoryMessageIds: async () => {
         if (simulateFallback404) {
           return {
@@ -445,7 +445,7 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
             pushAlerts.push(payload);
           },
         },
-        gmailPubSubTopic: 'projects/haven-test/topics/haven-gmail-push',
+        gmailPubSubTopic: 'projects/cohost-test/topics/cohost-gmail-push',
       }),
     );
 
@@ -453,7 +453,7 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
 
     // 1. Pub/Sub push with older historyId (150000) still advances monotonically to 200050 (never regresses)
     const olderPushPayload = Buffer.from(
-      JSON.stringify({ emailAddress: 'haven@example.com', historyId: 150000 }),
+      JSON.stringify({ emailAddress: 'cohost@example.com', historyId: 150000 }),
       'utf8',
     ).toString('base64');
     const pushRes1 = await fetch(`${baseUrl}/api/internal/gmail-push`, {

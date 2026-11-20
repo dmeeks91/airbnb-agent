@@ -18,7 +18,7 @@ import type {
   Property,
   ThreadMessage,
   UnmatchedEmail,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 import { formatRelativeTime, formatShortClock } from '../utils/dateFormat.ts';
 import { recalculateDiscountAlert } from '../utils/payoutHelpers.ts';
 import { getPropertyDisplayLabel, getPropertyTheme } from '../utils/propertyHelpers.ts';
@@ -153,7 +153,7 @@ export function MessagesView({
           </div>
           <div className="min-w-0">
             <h1 className="font-headline text-headline-sm text-light-on-surface leading-tight">
-              Haven Co-Host
+              Guest Co-Host
             </h1>
             <div className="flex items-center gap-1.5 text-body-sm text-light-secondary truncate">
               <span

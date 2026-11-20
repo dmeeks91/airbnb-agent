@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { App } from '../../App.tsx';
-import { createLocalHavenStore } from '../../services/havenStore.ts';
+import { createLocalCohostStore } from '../../services/cohostStore.ts';
 
 afterEach(() => {
   cleanup();
@@ -12,7 +12,7 @@ afterEach(() => {
 describe('Stage 3: House Details, Rule Details Sheet, Import Knowledge & Account Journey', () => {
   it('edits pricing guardrails, manages temporary rules via custom SelectPopover and DatePickerPopover, and adds vendors', async () => {
     const user = userEvent.setup();
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
     const { container } = render(<App store={store} />);
 
     // Navigate via Bottom Nav to House Details
@@ -76,7 +76,7 @@ describe('Stage 3: House Details, Rule Details Sheet, Import Knowledge & Account
 
   it('extracts rules with conflict review (Updates existing rule vs New rule) and merges into House Details', async () => {
     const user = userEvent.setup();
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
     render(<App store={store} initialView="house-details" />);
 
     await user.click(screen.getByRole('button', { name: 'Import' }));
@@ -118,7 +118,7 @@ describe('Stage 3: House Details, Rule Details Sheet, Import Knowledge & Account
 
   it('supports One-Liner and PDF upload import paths', async () => {
     const user = userEvent.setup();
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
     render(<App store={store} initialView="import" />);
 
     // One-Liner tab
@@ -147,7 +147,7 @@ describe('Stage 3: House Details, Rule Details Sheet, Import Knowledge & Account
 
   it('manages push alerts, Gmail watch health display, sign-off settings, and deletable learned diffs in Account', async () => {
     const user = userEvent.setup();
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
     const { container } = render(<App store={store} />);
 
     await user.click(screen.getByRole('button', { name: 'Account' }));

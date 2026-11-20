@@ -5,7 +5,7 @@ import type {
   Property,
   ThreadMessage,
   VoiceProfile,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 import { sanitizeDraftOutput } from './draftSanitizer.ts';
 import { recalculateDiscountAlert } from './payoutHelpers.ts';
 import { filterActiveRules } from './ruleFilters.ts';

@@ -1,8 +1,8 @@
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { isFirebaseConfigured, requestWebPushToken } from '../services/firebase.ts';
-import type { HavenStore } from '../services/havenStore.ts';
+import type { CohostStore } from '../services/cohostStore.ts';
 
-export function usePushNotifications(store: HavenStore) {
+export function usePushNotifications(store: CohostStore) {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);

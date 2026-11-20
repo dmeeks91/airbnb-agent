@@ -15,7 +15,7 @@ import type {
   HouseRule,
   KnowledgeSourceType,
   Property,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 import { extractRulesLocally } from '../utils/localKnowledgeExtractor.ts';
 import { getPropertyDisplayLabel, getPropertyTheme } from '../utils/propertyHelpers.ts';
 

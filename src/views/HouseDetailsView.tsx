@@ -19,14 +19,14 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { PropertySwitcher } from '../components/PropertySwitcher.tsx';
 import { SearchInput } from '../components/ui/SearchInput.tsx';
 import { VendorDetailsSheet } from '../components/VendorDetailsSheet.tsx';
-import type { UpsertRuleInput } from '../services/havenStore.ts';
+import type { UpsertRuleInput } from '../services/cohostStore.ts';
 import type {
   HouseRule,
   Property,
   PropertyPricing,
   PropertyVendor,
   RuleCategory,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 import { formatCalendarDate } from '../utils/dateFormat.ts';
 import { getPropertyDisplayLabel, getPropertyTheme } from '../utils/propertyHelpers.ts';
 import { groupRulesByCategory, isRuleExpired } from '../utils/ruleFilters.ts';

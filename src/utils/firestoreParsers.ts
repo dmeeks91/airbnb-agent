@@ -24,7 +24,7 @@ import type {
   ThreadStatus,
   UnmatchedEmail,
   VoiceProfile,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 
 const MAX_LEARNED_DIFFS = 15;
 

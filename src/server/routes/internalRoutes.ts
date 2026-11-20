@@ -15,7 +15,7 @@ import {
 import {
   createPushAdapter,
   getServerRepository,
-  type HavenServerRepository,
+  type CohostServerRepository,
 } from '../services/serverRepository.ts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -64,7 +64,7 @@ export function maxNumericString(a: string | null, b: string | null): string | n
 }
 
 export interface InternalRoutesDeps {
-  repository?: HavenServerRepository;
+  repository?: CohostServerRepository;
   pubSubOidcMiddleware?: RequestHandler;
   schedulerOidcMiddleware?: RequestHandler;
   createGmailClient?: () => GmailSyncClient | null;
@@ -101,7 +101,7 @@ export function createInternalRouter(deps: InternalRoutesDeps = {}): Router {
       }
 
       const state = await repo.getIngestionState();
-      const labelName = process.env.GMAIL_WATCHED_LABEL?.trim() || 'Haven';
+      const labelName = process.env.GMAIL_WATCHED_LABEL?.trim() || 'Co-Host';
       const labelId = state.watchedLabelId || (await gmail.resolveLabelId(labelName));
 
       if (!labelId) {
@@ -176,7 +176,7 @@ export function createInternalRouter(deps: InternalRoutesDeps = {}): Router {
         throw new Error('GMAIL_PUBSUB_TOPIC is not configured');
       }
 
-      const labelName = process.env.GMAIL_WATCHED_LABEL?.trim() || 'Haven';
+      const labelName = process.env.GMAIL_WATCHED_LABEL?.trim() || 'Co-Host';
       const state = await repo.getIngestionState();
       const labelId = state.watchedLabelId || (await gmail.resolveLabelId(labelName));
       if (!labelId) {
@@ -206,7 +206,7 @@ export function createInternalRouter(deps: InternalRoutesDeps = {}): Router {
         lastError: message,
       });
       await pushAdapter.sendAlert({
-        title: 'Haven Gmail Watch Renewal Failed',
+        title: 'Guest Co-Host Gmail Watch Renewal Failed',
         body: message.slice(0, 140),
         view: 'messages',
       });

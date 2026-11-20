@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import type { RuleCategory } from '../../types/haven.ts';
+import type { RuleCategory } from '../../types/cohost.ts';
 
 export interface VertexDraftOutput {
   agentComment: string;

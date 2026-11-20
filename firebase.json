@@ -10,7 +10,7 @@
       {
         "source": "**",
         "run": {
-          "serviceId": "haven-cohost",
+          "serviceId": "cohost",
           "region": "us-central1"
         }
       }

@@ -5,10 +5,10 @@ import { createKnowledgeRouter } from './knowledgeRoutes.ts';
 import { createUnmatchedRouter } from './unmatchedRoutes.ts';
 import type { GmailSyncClient } from '../services/gmailClient.ts';
 import type { IngestionPushAdapter } from '../services/ingestionService.ts';
-import type { HavenServerRepository } from '../services/serverRepository.ts';
+import type { CohostServerRepository } from '../services/serverRepository.ts';
 
 export interface ApiRouterDeps {
-  repository?: HavenServerRepository;
+  repository?: CohostServerRepository;
   authMiddleware?: RequestHandler;
   pubSubOidcMiddleware?: RequestHandler;
   schedulerOidcMiddleware?: RequestHandler;
@@ -23,7 +23,7 @@ export function createApiRouter(deps: ApiRouterDeps = {}): Router {
   router.get('/health', (_req, res) => {
     res.json({
       ok: true,
-      service: 'haven-cohost',
+      service: 'cohost',
       timestamp: new Date().toISOString(),
     });
   });

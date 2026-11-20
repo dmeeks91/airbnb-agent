@@ -2,7 +2,7 @@ import type {
   ExtractedRuleCandidate,
   HouseRule,
   RuleCategory,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 
 function normalizeTopicKey(text: string): string {
   return text

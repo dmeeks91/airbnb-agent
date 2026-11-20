@@ -7,7 +7,7 @@ import type {
   PropertyMatchCandidate,
   ThreadMessage,
   UnmatchedEmail,
-} from '../../types/haven.ts';
+} from '../../types/cohost.ts';
 import { detectDiscountAlert } from './discountDetector.ts';
 import { parseAirbnbEmail } from './emailParser.ts';
 import { computeMessageFingerprint } from './messageFingerprint.ts';

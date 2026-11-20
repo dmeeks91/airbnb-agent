@@ -296,7 +296,7 @@ export interface AssignUnmatchedRequest {
   propertyId: string;
 }
 
-export type HavenAppView =
+export type CohostAppView =
   | 'messages'
   | 'dialogue'
   | 'thread'
@@ -304,7 +304,7 @@ export type HavenAppView =
   | 'import'
   | 'account';
 
-export interface HavenDataSnapshot {
+export interface CohostDataSnapshot {
   properties: Property[];
   rules: Record<string, HouseRule[]>;
   threads: Record<string, GuestThread[]>;

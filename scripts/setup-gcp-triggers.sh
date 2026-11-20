@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# One-time GCP Pub/Sub Push & 3-Day Cloud Scheduler setup for Haven Co-Host (Stage 5)
+# One-time GCP Pub/Sub Push & 3-Day Cloud Scheduler setup for Guest Co-Host (Stage 5)
 # Usage:
 #   GOOGLE_CLOUD_PROJECT=your-project \
-#   CLOUD_RUN_URL=https://haven-cohost-xxxxx-uc.a.run.app \
+#   CLOUD_RUN_URL=https://cohost-xxxxx-uc.a.run.app \
 #   REGION=us-central1 \
 #   ./scripts/setup-gcp-triggers.sh
 
@@ -12,11 +12,11 @@ PROJECT_ID="${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT}"
 CLOUD_RUN_URL="${CLOUD_RUN_URL:?Set CLOUD_RUN_URL (no trailing slash)}"
 REGION="${REGION:-us-central1}"
 
-TOPIC_NAME="haven-gmail-push"
-SUBSCRIPTION_NAME="haven-gmail-push-sub"
-PUBSUB_SA="haven-pubsub-push@${PROJECT_ID}.iam.gserviceaccount.com"
-SCHEDULER_SA="haven-scheduler@${PROJECT_ID}.iam.gserviceaccount.com"
-SCHEDULER_JOB="haven-renew-gmail-watch"
+TOPIC_NAME="cohost-gmail-push"
+SUBSCRIPTION_NAME="cohost-gmail-push-sub"
+PUBSUB_SA="cohost-pubsub-push@${PROJECT_ID}.iam.gserviceaccount.com"
+SCHEDULER_SA="cohost-scheduler@${PROJECT_ID}.iam.gserviceaccount.com"
+SCHEDULER_JOB="cohost-renew-gmail-watch"
 
 echo "1. Creating Pub/Sub topic (${TOPIC_NAME}) and granting Gmail API publish access..."
 gcloud pubsub topics create "${TOPIC_NAME}" --project="${PROJECT_ID}" || true
@@ -26,13 +26,13 @@ gcloud pubsub topics add-iam-policy-binding "${TOPIC_NAME}" \
   --role="roles/pubsub.publisher"
 
 echo "2. Creating dedicated OIDC service accounts..."
-gcloud iam service-accounts create haven-pubsub-push \
+gcloud iam service-accounts create cohost-pubsub-push \
   --project="${PROJECT_ID}" \
-  --display-name="Haven Pub/Sub Push Invoker" || true
+  --display-name="Guest Co-Host Pub/Sub Push Invoker" || true
 
-gcloud iam service-accounts create haven-scheduler \
+gcloud iam service-accounts create cohost-scheduler \
   --project="${PROJECT_ID}" \
-  --display-name="Haven 3-Day Watch Renewal Invoker" || true
+  --display-name="Guest Co-Host 3-Day Watch Renewal Invoker" || true
 
 echo "3. Creating authenticated Pub/Sub push subscription -> /api/internal/gmail-push..."
 gcloud pubsub subscriptions create "${SUBSCRIPTION_NAME}" \

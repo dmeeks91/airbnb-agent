@@ -3,14 +3,14 @@ import type {
   ActiveCoachSession,
   CoachTurn,
   CoachTurnResponse,
-} from '../../types/haven.ts';
+} from '../../types/cohost.ts';
 import { buildLocalFallbackCoachTurn } from '../../utils/localDraftFallback.ts';
 import { generateDraftWithVertex } from '../config/vertex.ts';
 import { requireHostAuth, type HostAuthRequest } from '../middleware/requireHostAuth.ts';
 import { buildCoachPrompt, sanitizeDraftOutput } from '../services/promptBuilder.ts';
 import {
   getServerRepository,
-  type HavenServerRepository,
+  type CohostServerRepository,
 } from '../services/serverRepository.ts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -18,7 +18,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export interface CoachRoutesDeps {
-  repository?: HavenServerRepository;
+  repository?: CohostServerRepository;
   authMiddleware?: RequestHandler;
 }
 

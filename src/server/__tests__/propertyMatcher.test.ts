@@ -4,7 +4,7 @@ import {
   type ExistingThreadRef,
   type ParsedAirbnbEmail,
   type PropertyMatchCandidate,
-} from '../../types/haven.ts';
+} from '../../types/cohost.ts';
 
 const PROPERTIES: PropertyMatchCandidate[] = [
   {

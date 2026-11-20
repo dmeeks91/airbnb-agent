@@ -2,15 +2,15 @@ import { createSeedSnapshot } from '../../data/seedData.ts';
 import type {
   ActiveCoachSession,
   GuestThread,
-  HavenDataSnapshot,
+  CohostDataSnapshot,
   HouseRule,
   IngestionHealth,
   Property,
   ThreadMessage,
   UnmatchedEmail,
   VoiceProfile,
-} from '../../types/haven.ts';
-import { LocalHavenStore, type MarkSentOptions } from '../../services/localHavenStore.ts';
+} from '../../types/cohost.ts';
+import { LocalCohostStore, type MarkSentOptions } from '../../services/localCohostStore.ts';
 import {
   parseMessageDoc,
   parsePropertyDoc,
@@ -39,7 +39,7 @@ export interface IngestionStateDoc {
   watchedEmail: string;
 }
 
-export interface HavenServerRepository extends IngestionStorageAdapter {
+export interface CohostServerRepository extends IngestionStorageAdapter {
   getAllowedEmails(): Promise<string[]>;
   getProperty(propertyId: string): Promise<Property | null>;
   getPropertyRules(propertyId: string): Promise<HouseRule[]>;
@@ -75,20 +75,20 @@ function parseEnvAllowedEmails(): string[] {
     .filter(Boolean);
 }
 
-export class InMemoryServerRepository implements HavenServerRepository {
-  private store: LocalHavenStore;
+export class InMemoryServerRepository implements CohostServerRepository {
+  private store: LocalCohostStore;
   private readonly processed = new Map<string, ProcessedEmailRecord>();
   private ingestionState: IngestionStateDoc;
   private ingestionHealth: IngestionHealth;
 
-  constructor(initialSnapshot?: HavenDataSnapshot) {
+  constructor(initialSnapshot?: CohostDataSnapshot) {
     const snap = initialSnapshot ?? createSeedSnapshot();
-    this.store = new LocalHavenStore(snap);
+    this.store = new LocalCohostStore(snap);
     this.ingestionHealth = { ...snap.ingestionHealth };
     this.ingestionState = {
       lastHistoryId: '100001',
       watchExpiresAt: snap.ingestionHealth.watchExpiresAt,
-      watchedLabelId: 'Label_Haven',
+      watchedLabelId: 'Label_Cohost',
       watchedEmail:
         process.env.GMAIL_WATCHED_EMAIL?.trim() || snap.ingestionHealth.watchedEmail,
     };
@@ -160,7 +160,7 @@ export class InMemoryServerRepository implements HavenServerRepository {
       (a, b) => a.sentAt.localeCompare(b.sentAt),
     );
 
-    this.store = new LocalHavenStore({
+    this.store = new LocalCohostStore({
       ...snap,
       threads: {
         ...snap.threads,
@@ -175,7 +175,7 @@ export class InMemoryServerRepository implements HavenServerRepository {
 
   public async saveUnmatchedEmail(item: UnmatchedEmail): Promise<void> {
     const snap = this.store.getSnapshot();
-    this.store = new LocalHavenStore({
+    this.store = new LocalCohostStore({
       ...snap,
       unmatchedEmails: [{ ...item }, ...snap.unmatchedEmails],
     });
@@ -186,7 +186,7 @@ export class InMemoryServerRepository implements HavenServerRepository {
     const propertyThreads = snap.threads[propertyId] ?? [];
     const needsReplyCount = propertyThreads.filter((t) => t.status === 'needs_reply').length;
     const flaggedCount = propertyThreads.filter((t) => t.status === 'flagged').length;
-    this.store = new LocalHavenStore({
+    this.store = new LocalCohostStore({
       ...snap,
       properties: snap.properties.map((p) =>
         p.id === propertyId ? { ...p, needsReplyCount, flaggedCount } : p,
@@ -242,7 +242,7 @@ export class InMemoryServerRepository implements HavenServerRepository {
     });
 
     const updatedSnap = this.store.getSnapshot();
-    this.store = new LocalHavenStore({
+    this.store = new LocalCohostStore({
       ...updatedSnap,
       unmatchedEmails: updatedSnap.unmatchedEmails.map((item) =>
         item.id === unmatchedId ? { ...item, resolved: true } : item,
@@ -278,7 +278,7 @@ export class InMemoryServerRepository implements HavenServerRepository {
   public async removeStaleFcmTokens(_uid: string, staleTokens: string[]): Promise<void> {
     const snap = this.store.getSnapshot();
     const staleSet = new Set(staleTokens);
-    this.store = new LocalHavenStore({
+    this.store = new LocalCohostStore({
       ...snap,
       userProfile: {
         ...snap.userProfile,
@@ -287,7 +287,7 @@ export class InMemoryServerRepository implements HavenServerRepository {
     });
   }
 
-  public getSnapshot(): HavenDataSnapshot {
+  public getSnapshot(): CohostDataSnapshot {
     return this.store.getSnapshot();
   }
 
@@ -296,7 +296,7 @@ export class InMemoryServerRepository implements HavenServerRepository {
   }
 }
 
-class FirestoreServerRepository implements HavenServerRepository {
+class FirestoreServerRepository implements CohostServerRepository {
   private readonly fallback = new InMemoryServerRepository();
 
   public async getAllowedEmails(): Promise<string[]> {
@@ -713,9 +713,9 @@ class FirestoreServerRepository implements HavenServerRepository {
   }
 }
 
-let cachedRepo: HavenServerRepository | null = null;
+let cachedRepo: CohostServerRepository | null = null;
 
-export function getServerRepository(): HavenServerRepository {
+export function getServerRepository(): CohostServerRepository {
   if (!cachedRepo) {
     cachedRepo = getFirebaseAdminServices()
       ? new FirestoreServerRepository()
@@ -724,7 +724,7 @@ export function getServerRepository(): HavenServerRepository {
   return cachedRepo;
 }
 
-export function createPushAdapter(repo: HavenServerRepository): IngestionPushAdapter {
+export function createPushAdapter(repo: CohostServerRepository): IngestionPushAdapter {
   return {
     sendAlert: async (payload) => {
       await sendAndroidPushNotification(payload, {

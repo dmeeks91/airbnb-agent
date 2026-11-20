@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { BottomSheet } from '../components/ui/BottomSheet.tsx';
-import type { GuestThread, Property, ThreadMessage } from '../types/haven.ts';
+import type { GuestThread, Property, ThreadMessage } from '../types/cohost.ts';
 import { formatRelativeTime, formatShortClock } from '../utils/dateFormat.ts';
 import { getPropertyTheme } from '../utils/propertyHelpers.ts';
 

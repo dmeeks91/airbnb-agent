@@ -1,10 +1,10 @@
-# Haven Co-Host: V1 Architecture & Implementation Plan
+# Guest Co-Host: V1 Architecture & Implementation Plan
 
-> Canonical engineering specification for `airbnb-agent`. Visual tokens and screen layouts are defined in `docs/DESIGN.md` and `docs/stitch_prototype_reference.html`.
+> Canonical engineering specification for `airbnb-agent` (App: **Guest Co-Host**, Short Name: **Co-Host**, Slug: `cohost`). Visual tokens and screen layouts are defined in `docs/DESIGN.md` and `docs/stitch_prototype_reference.html`.
 
 ## 1. Scope & Locked Product Decisions
 
-Haven Co-Host is a mobile-first Android PWA for managing Airbnb guest messaging across multiple properties, grounded in verified per-property facts and tuned to your writing voice.
+Guest Co-Host is a mobile-first Android PWA for managing Airbnb guest messaging across multiple properties, grounded in verified per-property facts and tuned to your writing voice.
 
 **Locked UX & Behavioral Decisions:**
 * **Single-property active view** on Messages with a top-right property switcher and an unread count badge when another property has messages waiting.
@@ -35,7 +35,7 @@ Follows the single-package React 19 + Vite + Tailwind v4 + modular Express + mul
 ```mermaid
 flowchart LR
   Airbnb["Airbnb Guest Email"] --> PersonalGmail["Host & Co-Host Personal Gmail (Auto-Forward Filters)"]
-  PersonalGmail --> WorkspaceMail["Workspace Mailbox Alias (Haven Label)"]
+  PersonalGmail --> WorkspaceMail["Workspace Mailbox Alias (Co-Host Label)"]
   WorkspaceMail --> PubSub["Cloud Pub/Sub (Gmail Watch)"]
   Scheduler["Cloud Scheduler (3-Day Renewal + Heartbeat)"] --> CloudRun["Cloud Run: Express + React PWA"]
   PubSub --> CloudRun
@@ -43,7 +43,7 @@ flowchart LR
   CloudRun <--> FS[("Cloud Firestore")]
   CloudRun --> Vertex["Vertex AI (Gemini 2.5 Flash)"]
   CloudRun --> FCM["Firebase Cloud Messaging (Android Push)"]
-  FCM --> PWA["Haven Android PWA (via Firebase Hosting Rewrite)"]
+  FCM --> PWA["Guest Co-Host Android PWA (via Firebase Hosting Rewrite)"]
   PWA <--> FS
   PWA <--> CloudRun
 ```
@@ -56,7 +56,7 @@ flowchart LR
    * Service worker (`firebase-messaging-sw.js`) and `manifest.json` are served with `Cache-Control: no-cache` so Android Chrome always receives PWA updates reliably.
 2. **Email Ingestion (Google Workspace Gmail API + Cloud Pub/Sub):**
    * Both your personal Gmail and your husband's Gmail (for listings he co-hosts) run a filter forwarding Airbnb emails (`from:@airbnb.com`, keeping a copy in each inbox) to a free alias on your existing Google Workspace mailbox (no extra seat needed).
-   * A Workspace Gmail filter applies a dedicated `Haven` label and skips the Workspace inbox so business email stays clean.
+   * A Workspace Gmail filter applies a dedicated `Co-Host` label and skips the Workspace inbox so business email stays clean.
    * The Firebase/GCP project lives inside your Google Workspace organization so OAuth uses an **Internal** consent screen (no public app verification, no 7-day refresh token expiration) with read-only Gmail access scoped strictly to that one mailbox.
    * Cloud Pub/Sub pushes Gmail watch notifications to `POST /api/internal/gmail-push`, and Cloud Scheduler hits `POST /api/internal/renew-watch` every 3 days to renew the 7-day watch and check ingestion health (sending an FCM alert on failure).
    * Both internal routes verify Google-signed OIDC tokens from the Pub/Sub and Scheduler service accounts.
@@ -128,7 +128,7 @@ airbnb-agent/
 ├── index.html
 ├── server.ts                               # Thin Express entry point (/api + Vite dev / dist prod)
 ├── docs/
-│   ├── DESIGN.md                           # Haven visual tokens & V1 UI reconciliation rules
+│   ├── DESIGN.md                           # Guest Co-Host visual tokens & V1 UI reconciliation rules
 │   ├── IMPLEMENTATION_PLAN.md              # This canonical plan
 │   ├── OVERNIGHT_OWL_PROMPT.md             # Handoff brief for autonomous Stages 1-4 execution
 │   └── stitch_prototype_reference.html     # Extracted Stitch Interactive Workflow Prototype HTML
@@ -141,14 +141,14 @@ airbnb-agent/
 └── src/
     ├── main.tsx
     ├── App.tsx                             # Auth gate + view router + active property context
-    ├── index.css                           # Haven design tokens (colors, fonts, spacing)
+    ├── index.css                           # Guest Co-Host design tokens (colors, fonts, spacing)
     ├── types/
-    │   └── haven.ts                        # Shared frontend/backend TypeScript domain interfaces
+    │   └── cohost.ts                       # Shared frontend/backend TypeScript domain interfaces
     ├── data/
     │   └── seedData.ts                     # Anonymized local dev & test fixtures
     ├── services/
     │   ├── firebase.ts                     # Auth, Firestore (offline persistence), Messaging init
-    │   ├── havenStore.ts                   # Repository abstraction (Firestore live + local dev adapter)
+    │   ├── cohostStore.ts                  # Repository abstraction (Firestore live + local dev adapter)
     │   └── apiClient.ts                    # Typed fetch wrapper attaching Firebase Auth Bearer token
     ├── hooks/
     │   ├── useProperties.ts                # Live properties + unread counts + unmatched count
@@ -213,7 +213,7 @@ airbnb-agent/
 ### Stage 1: Project Scaffold, Express Entry Point, Theme Tokens & Core UI Primitives
 * Add React 19, Vite, Tailwind v4, Express, `lucide-react`, `@google/genai`, `firebase`, `firebase-admin`, `@testing-library/react`, and `jsdom`.
 * Add `server.ts`, `vite.config.ts`, `index.html`, `Dockerfile`, `.dockerignore`, `.env.example`, `firebase.json`, `firestore.rules` (verified-email allowlist), and `firestore.indexes.json` matching the `TGIF-Project-Planner` Cloud Run pattern.
-* Implement Haven design tokens (`src/index.css`), Firestore offline persistence + local dev seed adapter (`src/services/havenStore.ts`, `src/data/seedData.ts`), `apiClient.ts`, and custom accessible UI primitives (`SearchInput`, `SelectPopover`, `DatePickerPopover`, `BottomSheet`) with strict light-mode input styling.
+* Implement Guest Co-Host design tokens (`src/index.css`), Firestore offline persistence + local dev seed adapter (`src/services/cohostStore.ts`, `src/data/seedData.ts`), `apiClient.ts`, and custom accessible UI primitives (`SearchInput`, `SelectPopover`, `DatePickerPopover`, `BottomSheet`) with strict light-mode input styling.
 * Verify clean `npm run lint`, `npm test`, and `npm run build`.
 
 ### Stage 2: Core Messaging Views (Messages, Agent Dialogue, Guest Thread)
@@ -233,6 +233,6 @@ airbnb-agent/
 * Add comprehensive backend unit tests (`promptBuilder.test.ts`, `ingestionService.test.ts`) and React Testing Library end-to-end journey tests covering all views and authentic multi-step flows.
 
 ### Stage 5: Live GCP / Workspace Setup & Deployment (Interactive Human Checkpoint)
-* Create the Firebase/GCP project under your Google Workspace organization, enable Vertex AI and Gmail API, configure the Internal OAuth consent screen, and set up personal + husband Gmail forwarding into the Workspace `Haven` label.
+* Create the Firebase/GCP project under your Google Workspace organization, enable Vertex AI and Gmail API, configure the Internal OAuth consent screen, and set up personal + husband Gmail forwarding into the Workspace `Co-Host` label.
 * Deploy the Cloud Run container, Firebase Hosting rewrite, Firestore rules, and Pub/Sub + 3-day Cloud Scheduler triggers via `scripts/setup-gcp-triggers.sh`.
 * Install the PWA on Android Chrome and test end-to-end with a real forwarded Airbnb email and push notification tap.

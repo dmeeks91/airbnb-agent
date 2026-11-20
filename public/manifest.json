@@ -1,6 +1,6 @@
 {
-  "name": "Haven Co-Host",
-  "short_name": "Haven",
+  "name": "Guest Co-Host",
+  "short_name": "Co-Host",
   "description": "Mobile-first Airbnb co-host messaging queue, grounded house rules, and AI reply coach.",
   "start_url": "/",
   "display": "standalone",

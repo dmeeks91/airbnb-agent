@@ -17,7 +17,7 @@ export function stripEditorialDashes(text: string): string {
 }
 
 /**
- * Post-processes generated guest reply drafts to enforce hard Haven style guardrails:
+ * Post-processes generated guest reply drafts to enforce hard Guest Co-Host style guardrails:
  * zero editorial em/en-dashes and zero sycophantic filler openers.
  */
 export function sanitizeDraftOutput(draft: string): string {

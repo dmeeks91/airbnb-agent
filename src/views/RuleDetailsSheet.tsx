@@ -3,8 +3,8 @@ import { useState, type FormEvent } from 'react';
 import { BottomSheet } from '../components/ui/BottomSheet.tsx';
 import { DatePickerPopover } from '../components/ui/DatePickerPopover.tsx';
 import { SelectPopover, type SelectOption } from '../components/ui/SelectPopover.tsx';
-import type { UpsertRuleInput } from '../services/havenStore.ts';
-import type { HouseRule, RuleCategory } from '../types/haven.ts';
+import type { UpsertRuleInput } from '../services/cohostStore.ts';
+import type { HouseRule, RuleCategory } from '../types/cohost.ts';
 import { formatCalendarDate } from '../utils/dateFormat.ts';
 
 export interface RuleDetailsSheetProps {

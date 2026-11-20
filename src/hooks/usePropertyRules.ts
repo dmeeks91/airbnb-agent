@@ -1,14 +1,14 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import type { HavenStore, UpsertRuleInput } from '../services/havenStore.ts';
+import type { CohostStore, UpsertRuleInput } from '../services/cohostStore.ts';
 import type {
   ExtractedRuleCandidate,
   KnowledgeSourceType,
   PropertyPricing,
   PropertyVendor,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 import { filterActiveRules, groupRulesByCategory } from '../utils/ruleFilters.ts';
 
-export function usePropertyRules(store: HavenStore, propertyId: string) {
+export function usePropertyRules(store: CohostStore, propertyId: string) {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
 
   const allRules = useMemo(() => snapshot.rules[propertyId] ?? [], [snapshot.rules, propertyId]);

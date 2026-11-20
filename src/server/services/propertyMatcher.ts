@@ -3,7 +3,7 @@ import {
   type ParsedAirbnbEmail,
   type PropertyMatchCandidate,
   type PropertyMatchResult,
-} from '../../types/haven.ts';
+} from '../../types/cohost.ts';
 
 const MIN_TRUNCATED_PREFIX_LEN = 12;
 

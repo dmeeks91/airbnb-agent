@@ -4,7 +4,7 @@ import {
   type GuestStage,
   type ParsedAirbnbEmail,
   type ParsedEmailMessage,
-} from '../../types/haven.ts';
+} from '../../types/cohost.ts';
 
 const AIRBNB_DOMAIN_PATTERN = /(?:^|[@.])airbnb\.com$/i;
 

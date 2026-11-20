@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import type { HavenStore } from '../services/havenStore.ts';
+import type { CohostStore } from '../services/cohostStore.ts';
 import { requestAssignUnmatched } from '../services/apiClient.ts';
 import {
   findPropertyById,
   getOtherPropertiesUnreadCount,
 } from '../utils/propertyHelpers.ts';
 
-export function useProperties(store: HavenStore, activePropertyId: string) {
+export function useProperties(store: CohostStore, activePropertyId: string) {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
 
   const activeProperty = useMemo(

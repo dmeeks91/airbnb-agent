@@ -1,6 +1,6 @@
 import { AlertTriangle, Calculator } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import type { DiscountAlert, PayoutAssumption, PropertyPricing } from '../types/haven.ts';
+import type { DiscountAlert, PayoutAssumption, PropertyPricing } from '../types/cohost.ts';
 import { recalculateDiscountAlert } from '../utils/payoutHelpers.ts';
 
 export interface PayoutWarningBannerProps {

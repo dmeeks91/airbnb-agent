@@ -1,4 +1,4 @@
-import type { HouseRule, RuleCategory } from '../types/haven.ts';
+import type { HouseRule, RuleCategory } from '../types/cohost.ts';
 
 export const RULE_CATEGORIES: readonly RuleCategory[] = [
   'Access & Arrival',

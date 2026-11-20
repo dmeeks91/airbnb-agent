@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSeedSnapshot } from '../../data/seedData.ts';
-import type { CoachTurnResponse } from '../../types/haven.ts';
+import type { CoachTurnResponse } from '../../types/cohost.ts';
 
 const { setDocMock, docMock, onAuthStateChangedMock, onSnapshotMock, getFirebaseServicesMock } =
   vi.hoisted(() => ({
@@ -42,7 +42,7 @@ vi.mock('../../services/firebase.ts', () => ({
 }));
 
 import { App } from '../../App.tsx';
-import { FirestoreHavenStore } from '../../services/havenStore.ts';
+import { FirestoreCohostStore } from '../../services/cohostStore.ts';
 
 function buildCoachResponse(draftText: string): CoachTurnResponse {
   return {
@@ -75,7 +75,7 @@ function buildCoachResponse(draftText: string): CoachTurnResponse {
   };
 }
 
-describe('FirestoreHavenStore + AgentDialogueView async race protection', () => {
+describe('FirestoreCohostStore + AgentDialogueView async race protection', () => {
   beforeEach(() => {
     setDocMock.mockReset();
     setDocMock.mockImplementation(() => Promise.resolve());
@@ -107,7 +107,7 @@ describe('FirestoreHavenStore + AgentDialogueView async race protection', () => 
       );
     });
 
-    const store = new FirestoreHavenStore(createSeedSnapshot());
+    const store = new FirestoreCohostStore(createSeedSnapshot());
     render(
       <App
         store={store}
@@ -182,7 +182,7 @@ describe('FirestoreHavenStore + AgentDialogueView async race protection', () => 
       );
     });
 
-    const store = new FirestoreHavenStore(createSeedSnapshot());
+    const store = new FirestoreCohostStore(createSeedSnapshot());
     render(
       <App
         store={store}

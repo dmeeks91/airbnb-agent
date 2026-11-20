@@ -1,8 +1,8 @@
 import { BookOpen, Inbox, User } from 'lucide-react';
-import type { HavenAppView } from '../types/haven.ts';
+import type { CohostAppView } from '../types/cohost.ts';
 
 export interface BottomNavProps {
-  activeView: HavenAppView;
+  activeView: CohostAppView;
   totalWaitingCount: number;
   onNavigate: (view: 'messages' | 'house-details' | 'account') => void;
 }

@@ -1,4 +1,4 @@
-# Haven Co-Host: Design System & Visual Spec
+# Guest Co-Host: Design System & Visual Spec
 
 Extracted from Stitch project **Co-Host Guest Relay UX** (`Haven — Co-Host Design System` + `Interactive Workflow Prototype` saved at `docs/stitch_prototype_reference.html`).
 

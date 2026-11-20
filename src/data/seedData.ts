@@ -1,10 +1,10 @@
 import type {
-  HavenDataSnapshot,
+  CohostDataSnapshot,
   HouseRule,
   Property,
   ThreadMessage,
   UnmatchedEmail,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 import { calculateBothPayoutModes } from '../server/services/payoutMath.ts';
 
 function buildSeedProperties(): Property[] {
@@ -261,7 +261,7 @@ function buildSeedRules(): Record<string, HouseRule[]> {
   };
 }
 
-export function createSeedSnapshot(nowIso = '2026-11-20T05:15:00.000Z'): HavenDataSnapshot {
+export function createSeedSnapshot(nowIso = '2026-11-20T05:15:00.000Z'): CohostDataSnapshot {
   const properties = buildSeedProperties();
   const chaletPricing = properties[1].pricing;
   const sarahPayouts = calculateBothPayoutModes(800, 5, chaletPricing);
@@ -489,7 +489,7 @@ export function createSeedSnapshot(nowIso = '2026-11-20T05:15:00.000Z'): HavenDa
       lastEmailReceivedAt: '2026-11-20T05:12:00.000Z',
       watchExpiresAt: '2026-11-26T05:00:00.000Z',
       lastError: null,
-      watchedEmail: 'haven@example-workspace.com',
+      watchedEmail: 'cohost@example-workspace.com',
       dualInboxActive: true,
     },
     userProfile: {

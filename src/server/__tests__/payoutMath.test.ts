@@ -3,7 +3,7 @@ import {
   calculateBothPayoutModes,
   calculatePayoutBreakdown,
 } from '../services/payoutMath.ts';
-import { type PropertyPricing } from '../../types/haven.ts';
+import { type PropertyPricing } from '../../types/cohost.ts';
 
 const RICHMOND_PRICING: PropertyPricing = {
   nightlyFloor: 150,

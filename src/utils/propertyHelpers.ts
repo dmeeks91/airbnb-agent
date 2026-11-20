@@ -1,4 +1,4 @@
-import type { Property, PropertyCode } from '../types/haven.ts';
+import type { Property, PropertyCode } from '../types/cohost.ts';
 
 export interface PropertyThemeClasses {
   dotBg: string;

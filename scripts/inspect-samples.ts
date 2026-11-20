@@ -5,7 +5,7 @@ import {
   detectDiscountAlert,
   hasDiscountIntent,
 } from '../src/server/services/discountDetector.ts';
-import { type PropertyPricing } from '../src/types/haven.ts';
+import { type PropertyPricing } from '../src/types/cohost.ts';
 
 const DEFAULT_SAMPLE_DIR = path.resolve(process.cwd(), 'local-samples/airbnb-emails');
 

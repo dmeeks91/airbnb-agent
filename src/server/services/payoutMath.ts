@@ -2,7 +2,7 @@ import {
   type PayoutAssumption,
   type PayoutBreakdown,
   type PropertyPricing,
-} from '../../types/haven.ts';
+} from '../../types/cohost.ts';
 
 export const DEFAULT_HOST_SERVICE_FEE_PCT = 15.5;
 

@@ -2,7 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import { requireHostAuth, type HostAuthRequest } from '../middleware/requireHostAuth.ts';
 import {
   getServerRepository,
-  type HavenServerRepository,
+  type CohostServerRepository,
 } from '../services/serverRepository.ts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -10,7 +10,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export interface UnmatchedRoutesDeps {
-  repository?: HavenServerRepository;
+  repository?: CohostServerRepository;
   authMiddleware?: RequestHandler;
 }
 

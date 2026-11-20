@@ -12,7 +12,7 @@ import {
 import type {
   ActiveCoachSession,
   ExtractedRuleCandidate,
-  HavenDataSnapshot,
+  CohostDataSnapshot,
   HouseRule,
   KnowledgeSourceType,
   Property,
@@ -20,7 +20,7 @@ import type {
   PropertyVendor,
   UnmatchedEmail,
   VoiceProfile,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 import {
   parseIngestionHealthDoc,
   parseMessageDoc,
@@ -34,24 +34,24 @@ import {
 } from '../utils/firestoreParsers.ts';
 import { getFirebaseServices } from './firebase.ts';
 import {
-  createLocalHavenStore,
-  LocalHavenStore,
-  type HavenStore,
+  createLocalCohostStore,
+  LocalCohostStore,
+  type CohostStore,
   type MarkSentOptions,
   type SetCoachSessionOptions,
   type UpsertRuleInput,
-} from './localHavenStore.ts';
+} from './localCohostStore.ts';
 
 export {
-  createLocalHavenStore,
-  LocalHavenStore,
-  type HavenStore,
+  createLocalCohostStore,
+  LocalCohostStore,
+  type CohostStore,
   type MarkSentOptions,
   type SetCoachSessionOptions,
   type UpsertRuleInput,
 };
 
-function createEmptyLiveSnapshot(): HavenDataSnapshot {
+function createEmptyLiveSnapshot(): CohostDataSnapshot {
   return {
     properties: [],
     rules: {},
@@ -90,7 +90,7 @@ function createEmptyLiveSnapshot(): HavenDataSnapshot {
   };
 }
 
-export class FirestoreHavenStore extends LocalHavenStore {
+export class FirestoreCohostStore extends LocalCohostStore {
   private authUnsubscriber: Unsubscribe | null = null;
   private accessUnsubscriber: Unsubscribe | null = null;
   private dataUnsubscribers: Unsubscribe[] = [];
@@ -100,7 +100,7 @@ export class FirestoreHavenStore extends LocalHavenStore {
   private coachSessionEpochs = new Map<string, number>();
   private storeGeneration = 0;
 
-  constructor(initialSnapshot: HavenDataSnapshot = createEmptyLiveSnapshot()) {
+  constructor(initialSnapshot: CohostDataSnapshot = createEmptyLiveSnapshot()) {
     super(initialSnapshot, 'firestore');
     this.attachAuthListener();
   }
@@ -693,11 +693,11 @@ export class FirestoreHavenStore extends LocalHavenStore {
   }
 }
 
-let defaultStore: HavenStore | null = null;
+let defaultStore: CohostStore | null = null;
 
-export function getHavenStore(): HavenStore {
+export function getCohostStore(): CohostStore {
   if (!defaultStore) {
-    defaultStore = getFirebaseServices() ? new FirestoreHavenStore() : new LocalHavenStore();
+    defaultStore = getFirebaseServices() ? new FirestoreCohostStore() : new LocalCohostStore();
   }
   return defaultStore;
 }

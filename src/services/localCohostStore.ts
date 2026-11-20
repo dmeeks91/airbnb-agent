@@ -4,7 +4,7 @@ import type {
   ActiveCoachSession,
   ExtractedRuleCandidate,
   GuestThread,
-  HavenDataSnapshot,
+  CohostDataSnapshot,
   HouseRule,
   KnowledgeSource,
   KnowledgeSourceType,
@@ -16,7 +16,7 @@ import type {
   ThreadMessage,
   ThreadStatus,
   VoiceProfile,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 import { recalculateDiscountAlert } from '../utils/payoutHelpers.ts';
 
 const MAX_LEARNED_DIFFS = 15;
@@ -42,10 +42,10 @@ export interface UpsertRuleInput {
   expiresAt: string | null;
 }
 
-export interface HavenStore {
+export interface CohostStore {
   readonly mode: 'local' | 'firestore';
   subscribe(listener: () => void): () => void;
-  getSnapshot(): HavenDataSnapshot;
+  getSnapshot(): CohostDataSnapshot;
   updatePropertyPricing(propertyId: string, pricing: PropertyPricing): Promise<void>;
   updatePropertySignOff(propertyId: string, signOffOverride: string | null): Promise<void>;
   upsertVendor(propertyId: string, vendor: PropertyVendor): Promise<void>;
@@ -144,7 +144,7 @@ function collectCoachNotes(session: ActiveCoachSession | null): string[] {
   return notes;
 }
 
-function cloneSnapshot(snapshot: HavenDataSnapshot): HavenDataSnapshot {
+function cloneSnapshot(snapshot: CohostDataSnapshot): CohostDataSnapshot {
   return {
     properties: snapshot.properties.map((p) => ({
       ...p,
@@ -199,12 +199,12 @@ function cloneSnapshot(snapshot: HavenDataSnapshot): HavenDataSnapshot {
   };
 }
 
-export class LocalHavenStore implements HavenStore {
+export class LocalCohostStore implements CohostStore {
   public readonly mode: 'local' | 'firestore';
-  private snapshot: HavenDataSnapshot;
+  private snapshot: CohostDataSnapshot;
   private listeners = new Set<() => void>();
 
-  constructor(initialSnapshot?: HavenDataSnapshot, mode: 'local' | 'firestore' = 'local') {
+  constructor(initialSnapshot?: CohostDataSnapshot, mode: 'local' | 'firestore' = 'local') {
     this.mode = mode;
     this.snapshot = cloneSnapshot(initialSnapshot ?? createSeedSnapshot());
   }
@@ -216,11 +216,11 @@ export class LocalHavenStore implements HavenStore {
     };
   };
 
-  public getSnapshot = (): HavenDataSnapshot => {
+  public getSnapshot = (): CohostDataSnapshot => {
     return this.snapshot;
   };
 
-  protected commit(next: HavenDataSnapshot): void {
+  protected commit(next: CohostDataSnapshot): void {
     this.snapshot = next;
     for (const listener of this.listeners) {
       listener();
@@ -686,6 +686,6 @@ export class LocalHavenStore implements HavenStore {
   }
 }
 
-export function createLocalHavenStore(initialSnapshot?: HavenDataSnapshot): LocalHavenStore {
-  return new LocalHavenStore(initialSnapshot);
+export function createLocalCohostStore(initialSnapshot?: CohostDataSnapshot): LocalCohostStore {
+  return new LocalCohostStore(initialSnapshot);
 }

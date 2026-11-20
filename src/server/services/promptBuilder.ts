@@ -5,7 +5,7 @@ import type {
   Property,
   ThreadMessage,
   VoiceProfile,
-} from '../../types/haven.ts';
+} from '../../types/cohost.ts';
 import { sanitizeDraftOutput } from '../../utils/draftSanitizer.ts';
 import { recalculateDiscountAlert } from '../../utils/payoutHelpers.ts';
 import { filterActiveRules } from '../../utils/ruleFilters.ts';
@@ -38,7 +38,7 @@ function resolveEffectiveSignOff(property: Property, voiceProfile: VoiceProfile)
 
 /**
  * Assembles the server-side prompt for Vertex AI (Gemini 2.5 Flash) while enforcing
- * all Haven security and privacy guardrails:
+ * all Guest Co-Host security and privacy guardrails:
  * 1. Strips expired temporary/seasonal rules.
  * 2. Strictly strips ALL `Access & Arrival` rules whenever `thread.stage === 'inquiry'`
  *    (covering inquiries, pre-approvals, and pending reservation requests).
@@ -89,7 +89,7 @@ export function buildCoachPrompt(params: {
   const signOffDirective = resolveEffectiveSignOff(property, voiceProfile);
 
   const systemInstructionParts = [
-    `You are Haven Co-Host, an Airbnb messaging assistant drafting replies for property "${property.name}".`,
+    `You are Guest Co-Host, an Airbnb messaging assistant drafting replies for property "${property.name}".`,
     'SECURITY & PRIVACY RULES (NON-NEGOTIABLE):',
     '1. Only use verified facts listed under VERIFIED PROPERTY RULES below. Never invent codes, addresses, fees, or policies.',
     isInquiryStage

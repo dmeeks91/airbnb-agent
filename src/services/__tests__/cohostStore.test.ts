@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createSampleUnmatchedEmail, createSeedSnapshot } from '../../data/seedData.ts';
-import { createLocalHavenStore } from '../havenStore.ts';
+import { createLocalCohostStore } from '../cohostStore.ts';
 import { filterActiveRules, isRuleExpired } from '../../utils/ruleFilters.ts';
 
-describe('LocalHavenStore and ruleFilters', () => {
+describe('LocalCohostStore and ruleFilters', () => {
   it('filters expired temporary rules while keeping active permanent and future temporary rules', () => {
     const snapshot = createSeedSnapshot();
     const coastalRules = snapshot.rules['prop-coastal-loft'] ?? [];
@@ -23,7 +23,7 @@ describe('LocalHavenStore and ruleFilters', () => {
   });
 
   it('caps learned voice diffs at 15 rolling entries and skips diff logging on dismiss', async () => {
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
     const initialDiffCount = store.getSnapshot().voiceProfile.learnedDiffs.length;
 
     // Dismiss Sarah without logging any voice diff
@@ -48,7 +48,7 @@ describe('LocalHavenStore and ruleFilters', () => {
   it('assigns an unmatched email to a property and updates unread counts immutably', async () => {
     const seed = createSeedSnapshot();
     const unmatched = createSampleUnmatchedEmail();
-    const store = createLocalHavenStore({
+    const store = createLocalCohostStore({
       ...seed,
       unmatchedEmails: [unmatched],
     });

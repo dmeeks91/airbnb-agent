@@ -15,7 +15,7 @@ import type {
   IngestionHealth,
   SignOffMode,
   VoiceProfile,
-} from '../types/haven.ts';
+} from '../types/cohost.ts';
 import { formatCalendarDate, formatRelativeTime } from '../utils/dateFormat.ts';
 
 export interface AccountViewProps {

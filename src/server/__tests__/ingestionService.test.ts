@@ -108,7 +108,7 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
     // (Using "October 22 - 26, 2026" vs "Oct 22 – 26, 2026" to verify date normalization too)
     const followupRaw = [
       'From: Airbnb <automated@airbnb.com>',
-      'To: haven@example.com',
+      'To: cohost@example.com',
       'Subject: RE: Reservation for Maple Loft | Getaway + Monthly Discount, October 22 - 26, 2026',
       'Date: Sat, 10 Oct 2026 16:00:00 +0000',
       'Content-Type: text/plain; charset="UTF-8"',
@@ -165,7 +165,7 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
 
     const raw2 = [
       'From: Airbnb <automated@airbnb.com>',
-      'To: haven@example.com',
+      'To: cohost@example.com',
       'Subject: RE: Reservation for Maple Loft | Getaway + Monthly Discount, June 14 - 20, 2026',
       'Date: Sun, 20 Jun 2026 14:12:00 +0000',
       'Content-Type: text/plain; charset="UTF-8"',
@@ -215,7 +215,7 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
     // Discount offer matching Mountain Chalet flags the thread
     const chaletDiscountRaw = [
       'From: Alex Guest via Airbnb <express@airbnb.com>',
-      'To: haven@example.com',
+      'To: cohost@example.com',
       'Subject: Inquiry for Mountain Chalet, Dec 10 - 15, 2026',
       'Date: Tue, 20 Oct 2026 12:00:00 +0000',
       'Content-Type: text/plain; charset="UTF-8"',
@@ -240,7 +240,7 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
 
     const trip1Raw = [
       'From: Taylor Guest via Airbnb <express@airbnb.com>',
-      'To: haven@example.com',
+      'To: cohost@example.com',
       'Subject: Inquiry for Coastal Loft, Oct 10 - 12, 2026',
       'Date: Thu, 01 Oct 2026 12:00:00 +0000',
       'Content-Type: text/plain; charset="UTF-8"',
@@ -251,7 +251,7 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
 
     const trip2Over14DaysLater = [
       'From: Taylor Guest via Airbnb <express@airbnb.com>',
-      'To: haven@example.com',
+      'To: cohost@example.com',
       'Subject: Inquiry for Coastal Loft, Oct 10 - 12, 2026',
       'Date: Thu, 29 Oct 2026 12:00:00 +0000',
       'Content-Type: text/plain; charset="UTF-8"',
@@ -269,7 +269,7 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
     // Same guest, same dates, within 14 days, but DIFFERENT explicit airbnbThreadIds -> must NOT merge
     const threadA = [
       'From: Casey Guest via Airbnb <express@airbnb.com>',
-      'To: haven@example.com',
+      'To: cohost@example.com',
       'Subject: Inquiry for Coastal Loft, Nov 5 - 8, 2026',
       'Date: Sun, 01 Nov 2026 10:00:00 +0000',
       'Content-Type: text/plain; charset="UTF-8"',
@@ -281,7 +281,7 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
 
     const threadB = [
       'From: Casey Guest via Airbnb <express@airbnb.com>',
-      'To: haven@example.com',
+      'To: cohost@example.com',
       'Subject: Inquiry for Coastal Loft, Nov 5 - 8, 2026',
       'Date: Sun, 01 Nov 2026 12:00:00 +0000',
       'Content-Type: text/plain; charset="UTF-8"',
@@ -301,7 +301,7 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
 
     const inquiryDiscount = [
       'From: Dana Guest via Airbnb <express@airbnb.com>',
-      'To: haven@example.com',
+      'To: cohost@example.com',
       'Subject: Inquiry for Mountain Chalet, Dec 10 - 15, 2026',
       'Date: Tue, 20 Oct 2026 12:00:00 +0000',
       'Content-Type: text/plain; charset="UTF-8"',
@@ -329,7 +329,7 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
     // Later guest confirms and asks a normal arrival question
     const confirmedFollowUp = [
       'From: Airbnb <automated@airbnb.com>',
-      'To: haven@example.com',
+      'To: cohost@example.com',
       'Subject: RE: Reservation for Mountain Chalet, Dec 10 - 15, 2026',
       'Date: Wed, 09 Dec 2026 14:00:00 +0000',
       'Content-Type: text/plain; charset="UTF-8"',

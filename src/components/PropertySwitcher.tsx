@@ -1,6 +1,6 @@
 import { Building2, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type { Property } from '../types/haven.ts';
+import type { Property } from '../types/cohost.ts';
 import { getPropertyTheme } from '../utils/propertyHelpers.ts';
 
 export interface PropertySwitcherProps {

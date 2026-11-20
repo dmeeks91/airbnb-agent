@@ -1,7 +1,7 @@
 import { PhoneCall, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { BottomSheet } from './ui/BottomSheet.tsx';
-import type { PropertyVendor } from '../types/haven.ts';
+import type { PropertyVendor } from '../types/cohost.ts';
 
 export interface VendorDetailsSheetProps {
   isOpen: boolean;

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App.tsx';
 import { createSeedSnapshot } from '../../data/seedData.ts';
-import { createLocalHavenStore } from '../../services/havenStore.ts';
+import { createLocalCohostStore } from '../../services/cohostStore.ts';
 
 afterEach(() => {
   cleanup();
@@ -14,7 +14,7 @@ describe('App Firebase Auth allowlist gate and missing-thread recovery', () => {
   it('shows Sign in with Google when live auth is enabled and no user is signed in', async () => {
     const user = userEvent.setup();
     const onSignIn = vi.fn(async () => undefined);
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
 
     render(
       <App
@@ -37,7 +37,7 @@ describe('App Firebase Auth allowlist gate and missing-thread recovery', () => {
   it('locks out unverified Google accounts and non-allowlisted emails (fail-closed)', async () => {
     const user = userEvent.setup();
     const onSignOut = vi.fn(async () => undefined);
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
 
     // Case 1: unverified email even if email string matches allowlist
     const { rerender } = render(
@@ -83,7 +83,7 @@ describe('App Firebase Auth allowlist gate and missing-thread recovery', () => {
     expect(document.body.contains(screen.getByText(/not on the verified host allowlist/i))).toBe(true);
 
     // Case 3: fail-closed when allowlist is empty
-    const emptyAllowlistStore = createLocalHavenStore({
+    const emptyAllowlistStore = createLocalCohostStore({
       ...createSeedSnapshot(),
       allowedEmails: [],
     });
@@ -132,7 +132,7 @@ describe('App Firebase Auth allowlist gate and missing-thread recovery', () => {
 
   it('renders a clean recovery screen instead of a blank page if deep-linked to an unavailable thread', async () => {
     const user = userEvent.setup();
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
 
     render(
       <App

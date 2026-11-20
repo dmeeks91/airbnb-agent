@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSeedSnapshot } from '../../data/seedData.ts';
-import type { GuestThread, HouseRule, ThreadMessage } from '../../types/haven.ts';
+import type { GuestThread, HouseRule, ThreadMessage } from '../../types/cohost.ts';
 import { sanitizeDraftOutput } from '../draftSanitizer.ts';
 import { buildLocalFallbackCoachTurn } from '../localDraftFallback.ts';
 

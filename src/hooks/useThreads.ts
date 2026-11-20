@@ -4,8 +4,8 @@ import {
   notifyThreadSent,
   requestCoachTurn,
 } from '../services/apiClient.ts';
-import type { HavenStore } from '../services/havenStore.ts';
-import type { ActiveCoachSession, CoachTurn, GuestThread } from '../types/haven.ts';
+import type { CohostStore } from '../services/cohostStore.ts';
+import type { ActiveCoachSession, CoachTurn, GuestThread } from '../types/cohost.ts';
 import { buildLocalFallbackCoachTurn } from '../utils/localDraftFallback.ts';
 
 function statusPriority(status: GuestThread['status']): number {
@@ -21,7 +21,7 @@ function statusPriority(status: GuestThread['status']): number {
   return 3;
 }
 
-export function useThreads(store: HavenStore, propertyId: string) {
+export function useThreads(store: CohostStore, propertyId: string) {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const threadActionEpochRef = useRef(new Map<string, number>());
 
@@ -90,7 +90,7 @@ export function useThreads(store: HavenStore, propertyId: string) {
       }
 
       // Call the live Express API only when backed by shared Firestore state.
-      // In local mode, LocalHavenStore is the single source of truth so edits to
+      // In local mode, LocalCohostStore is the single source of truth so edits to
       // rules, pricing, sign-offs, and thread statuses never drift from Express.
       if (typeof fetch === 'function' && store.mode === 'firestore') {
         try {

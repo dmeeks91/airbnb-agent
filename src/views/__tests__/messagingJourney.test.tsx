@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { App } from '../../App.tsx';
 import { createSampleUnmatchedEmail, createSeedSnapshot } from '../../data/seedData.ts';
-import { createLocalHavenStore } from '../../services/havenStore.ts';
+import { createLocalCohostStore } from '../../services/cohostStore.ts';
 
 afterEach(() => {
   cleanup();
@@ -13,7 +13,7 @@ afterEach(() => {
 describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Thread)', () => {
   it('filters messages, switches properties, toggles net payout math, and hides unmatched banner when empty', async () => {
     const user = userEvent.setup();
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
     render(<App store={store} />);
 
     // Unmatched banner must NOT render when there are no unmatched emails
@@ -57,7 +57,7 @@ describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Threa
 
   it('generates lazy Turn 1 draft, preserves inline edit across Guest Thread roundtrip, and captures voice diff on Mark as Sent', async () => {
     const user = userEvent.setup();
-    const store = createLocalHavenStore();
+    const store = createLocalCohostStore();
     const initialDiffCount = store.getSnapshot().voiceProfile.learnedDiffs.length;
     render(<App store={store} />);
 
@@ -129,7 +129,7 @@ describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Threa
     const user = userEvent.setup();
     const seed = createSeedSnapshot();
     const unmatched = createSampleUnmatchedEmail();
-    const store = createLocalHavenStore({
+    const store = createLocalCohostStore({
       ...seed,
       unmatchedEmails: [unmatched],
     });
@@ -178,7 +178,7 @@ describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Threa
       ],
     };
 
-    const store = createLocalHavenStore(seed);
+    const store = createLocalCohostStore(seed);
     render(
       <App
         store={store}

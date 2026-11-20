@@ -87,7 +87,7 @@ export async function sendAndroidPushNotification(
           link: fullUrl,
         },
         notification: {
-          tag: payload.threadId ? `haven-thread-${payload.threadId}` : 'haven-alert',
+          tag: payload.threadId ? `cohost-thread-${payload.threadId}` : 'cohost-alert',
           renotify: true,
         },
       },
