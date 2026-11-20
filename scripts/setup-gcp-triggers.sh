@@ -34,6 +34,13 @@ gcloud iam service-accounts create cohost-scheduler \
   --project="${PROJECT_ID}" \
   --display-name="Guest Co-Host 3-Day Watch Renewal Invoker" || true
 
+PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
+echo "2b. Allowing Google Pub/Sub service agent to mint OIDC tokens for ${PUBSUB_SA}..."
+gcloud iam service-accounts add-iam-policy-binding "${PUBSUB_SA}" \
+  --project="${PROJECT_ID}" \
+  --member="serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountTokenCreator"
+
 echo "3. Creating authenticated Pub/Sub push subscription -> /api/internal/gmail-push..."
 gcloud pubsub subscriptions create "${SUBSCRIPTION_NAME}" \
   --project="${PROJECT_ID}" \

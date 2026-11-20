@@ -25,20 +25,35 @@ interface FirebaseClientConfig {
   vapidKey: string;
 }
 
+declare global {
+  interface Window {
+    __COHOST_FIREBASE_CONFIG__?: Partial<FirebaseClientConfig>;
+  }
+}
+
 function normalizeEnvString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
 function readFirebaseConfig(): FirebaseClientConfig {
+  const runtime =
+    typeof window !== 'undefined' ? window.__COHOST_FIREBASE_CONFIG__ : undefined;
   const env = import.meta.env;
   return {
-    apiKey: normalizeEnvString(env?.VITE_FIREBASE_API_KEY),
-    authDomain: normalizeEnvString(env?.VITE_FIREBASE_AUTH_DOMAIN),
-    projectId: normalizeEnvString(env?.VITE_FIREBASE_PROJECT_ID),
-    storageBucket: normalizeEnvString(env?.VITE_FIREBASE_STORAGE_BUCKET),
-    messagingSenderId: normalizeEnvString(env?.VITE_FIREBASE_MESSAGING_SENDER_ID),
-    appId: normalizeEnvString(env?.VITE_FIREBASE_APP_ID),
-    vapidKey: normalizeEnvString(env?.VITE_FIREBASE_VAPID_KEY),
+    apiKey: normalizeEnvString(runtime?.apiKey) || normalizeEnvString(env?.VITE_FIREBASE_API_KEY),
+    authDomain:
+      normalizeEnvString(runtime?.authDomain) || normalizeEnvString(env?.VITE_FIREBASE_AUTH_DOMAIN),
+    projectId:
+      normalizeEnvString(runtime?.projectId) || normalizeEnvString(env?.VITE_FIREBASE_PROJECT_ID),
+    storageBucket:
+      normalizeEnvString(runtime?.storageBucket) ||
+      normalizeEnvString(env?.VITE_FIREBASE_STORAGE_BUCKET),
+    messagingSenderId:
+      normalizeEnvString(runtime?.messagingSenderId) ||
+      normalizeEnvString(env?.VITE_FIREBASE_MESSAGING_SENDER_ID),
+    appId: normalizeEnvString(runtime?.appId) || normalizeEnvString(env?.VITE_FIREBASE_APP_ID),
+    vapidKey:
+      normalizeEnvString(runtime?.vapidKey) || normalizeEnvString(env?.VITE_FIREBASE_VAPID_KEY),
   };
 }
 

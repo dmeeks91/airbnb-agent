@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import path from 'node:path';
+import { renderProductionIndexHtml } from './src/server/config/clientConfig.ts';
 import { createApiRouter } from './src/server/routes/index.ts';
 
 async function startServer(): Promise<void> {
@@ -19,8 +20,10 @@ async function startServer(): Promise<void> {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
+    const renderedIndexHtml = renderProductionIndexHtml(distPath);
     app.use(
       express.static(distPath, {
+        index: false,
         setHeaders: (res, filePath) => {
           const base = path.basename(filePath);
           if (base === 'manifest.json' || base === 'firebase-messaging-sw.js') {
@@ -30,7 +33,8 @@ async function startServer(): Promise<void> {
       }),
     );
     app.get('*', (_req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      res.setHeader('Cache-Control', 'no-cache');
+      res.type('html').send(renderedIndexHtml);
     });
   }
 
