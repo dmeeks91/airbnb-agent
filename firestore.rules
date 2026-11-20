@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAllowedHost() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/config/access)
+        && request.auth.token.email in get(/databases/$(database)/documents/config/access).data.allowedEmails;
+    }
+
+    // Server-only ingestion state & dedupe logs (Admin SDK bypasses security rules)
+    match /config/ingestionState {
+      allow read, write: if false;
+    }
+
+    match /processedEmails/{gmailMessageId} {
+      allow read, write: if false;
+    }
+
+    // Read-only for hosts; managed via Admin SDK or console
+    match /config/access {
+      allow read: if isAllowedHost();
+      allow write: if false;
+    }
+
+    match /config/ingestionHealth {
+      allow read: if isAllowedHost();
+      allow write: if false;
+    }
+
+    match /config/voiceProfile {
+      allow read, write: if isAllowedHost();
+    }
+
+    match /unmatchedEmails/{emailId} {
+      allow read, write: if isAllowedHost();
+    }
+
+    match /users/{uid} {
+      allow read, write: if isAllowedHost() && request.auth.uid == uid;
+    }
+
+    match /properties/{propertyId} {
+      allow read, write: if isAllowedHost();
+
+      match /rules/{ruleId} {
+        allow read, write: if isAllowedHost();
+      }
+
+      match /threads/{threadId} {
+        allow read, write: if isAllowedHost();
+
+        match /messages/{messageId} {
+          allow read, write: if isAllowedHost();
+        }
+      }
+    }
+  }
+}

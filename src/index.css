@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+
+  /* Property Accents */
+  --color-property-a: #095C57;
+  --color-property-b: #8C4A00;
+  --color-property-c: #7F2A44;
+
+  /* Semantic Status */
+  --color-warning: #8C4000;
+  --color-warning-surface: #FEF3C7;
+  --color-success: #166534;
+  --color-success-surface: #DCFCE7;
+  --color-info: #1D4ED8;
+  --color-info-surface: #DBEAFE;
+
+  /* Core Light Palette */
+  --color-light-primary: #0F172A;
+  --color-light-on-primary: #FFFFFF;
+  --color-light-primary-container: #F1F5F9;
+  --color-light-on-primary-container: #0F172A;
+  --color-light-secondary: #334155;
+  --color-light-on-secondary: #FFFFFF;
+  --color-light-secondary-container: #E2E8F0;
+  --color-light-on-secondary-container: #1E293B;
+  --color-light-tertiary: #7C2D12;
+  --color-light-on-tertiary: #FFFFFF;
+  --color-light-tertiary-container: #FFEDD5;
+  --color-light-on-tertiary-container: #7C2D12;
+
+  /* Warm Neutrals */
+  --color-light-surface: #FAFAF9;
+  --color-light-on-surface: #0F172A;
+  --color-light-surface-container-low: #F5F5F4;
+  --color-light-surface-container: #E7E5E4;
+  --color-light-surface-container-high: #D6D3D1;
+  --color-light-outline: #57534E;
+  --color-light-outline-variant: #D6D3D1;
+}
+
+@theme {
+  --color-property-a: #095C57;
+  --color-property-b: #8C4A00;
+  --color-property-c: #7F2A44;
+
+  --color-warning: #8C4000;
+  --color-warning-surface: #FEF3C7;
+  --color-success: #166534;
+  --color-success-surface: #DCFCE7;
+  --color-info: #1D4ED8;
+  --color-info-surface: #DBEAFE;
+
+  --color-light-primary: #0F172A;
+  --color-light-on-primary: #FFFFFF;
+  --color-light-primary-container: #F1F5F9;
+  --color-light-on-primary-container: #0F172A;
+  --color-light-secondary: #334155;
+  --color-light-on-secondary: #FFFFFF;
+  --color-light-secondary-container: #E2E8F0;
+  --color-light-on-secondary-container: #1E293B;
+  --color-light-tertiary: #7C2D12;
+  --color-light-on-tertiary: #FFFFFF;
+  --color-light-tertiary-container: #FFEDD5;
+  --color-light-on-tertiary-container: #7C2D12;
+
+  --color-light-surface: #FAFAF9;
+  --color-light-on-surface: #0F172A;
+  --color-light-surface-container-low: #F5F5F4;
+  --color-light-surface-container: #E7E5E4;
+  --color-light-surface-container-high: #D6D3D1;
+  --color-light-outline: #57534E;
+  --color-light-outline-variant: #D6D3D1;
+
+  --font-display: "Alata", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-headline: "Alata", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-label: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-code: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --text-headline-lg: 1.5rem;
+  --text-headline-lg--line-height: 1.875rem;
+  --text-headline-md: 1.25rem;
+  --text-headline-md--line-height: 1.625rem;
+  --text-headline-sm: 1.0625rem;
+  --text-headline-sm--line-height: 1.375rem;
+  --text-body-lg: 1rem;
+  --text-body-lg--line-height: 1.5rem;
+  --text-body-md: 0.875rem;
+  --text-body-md--line-height: 1.25rem;
+  --text-body-sm: 0.75rem;
+  --text-body-sm--line-height: 1rem;
+  --text-label-lg: 0.875rem;
+  --text-label-lg--line-height: 1.25rem;
+  --text-label-md: 0.75rem;
+  --text-label-md--line-height: 1rem;
+  --text-label-sm: 0.6875rem;
+  --text-label-sm--line-height: 0.875rem;
+  --text-code-sm: 0.75rem;
+  --text-code-sm--line-height: 1rem;
+}
+
+html,
+body {
+  background-color: var(--color-light-surface);
+  color: var(--color-light-on-surface);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
