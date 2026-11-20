@@ -1,7 +1,8 @@
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { ArrowLeft, Lock, LogIn } from 'lucide-react';
+import { ArrowLeft, Lock, LogIn, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { BottomNav } from './components/BottomNav.tsx';
+import { PropertyDetailsSheet } from './components/PropertyDetailsSheet.tsx';
 import { useProperties } from './hooks/useProperties.ts';
 import { usePropertyRules } from './hooks/usePropertyRules.ts';
 import { usePushNotifications } from './hooks/usePushNotifications.ts';
@@ -13,7 +14,7 @@ import {
   signOutHost,
 } from './services/firebase.ts';
 import { getCohostStore, type CohostStore } from './services/cohostStore.ts';
-import type { CohostAppView } from './types/cohost.ts';
+import type { CohostAppView, Property } from './types/cohost.ts';
 import { formatRelativeTime } from './utils/dateFormat.ts';
 import { AccountView } from './views/AccountView.tsx';
 import { AgentDialogueView } from './views/AgentDialogueView.tsx';
@@ -120,6 +121,8 @@ export function App({
   const [threadReturnTarget, setThreadReturnTarget] = useState<'messages' | 'dialogue'>(
     'messages',
   );
+  const [isPropertySheetOpen, setIsPropertySheetOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
 
   useEffect(() => {
     if (authGate || !isLiveFirebase) {
@@ -184,6 +187,7 @@ export function App({
     userProfile,
     allowedEmails,
     assignUnmatched,
+    saveProperty,
   } = useProperties(activeStore, selectedPropertyId);
 
   const effectivePropertyId = activeProperty?.id ?? selectedPropertyId;
@@ -241,9 +245,11 @@ export function App({
   if (isLiveFirebase && !authUser) {
     return (
       <div className="min-h-screen max-w-[420px] mx-auto bg-light-surface border-x border-light-outline-variant flex flex-col items-center justify-center p-6 text-center gap-4">
-        <div className="w-12 h-12 rounded-full bg-light-primary text-white flex items-center justify-center font-headline text-xl">
-          H
-        </div>
+        <img
+          src="/icon-192.png"
+          alt="Guest Co-Host"
+          className="w-14 h-14 shrink-0 object-contain"
+        />
         <div className="flex flex-col gap-1">
           <h1 className="font-headline text-headline-md text-light-on-surface">
             Guest Co-Host
@@ -301,18 +307,15 @@ export function App({
     );
   }
 
-  if (!activeProperty) {
-    return (
-      <div className="min-h-screen max-w-[420px] mx-auto bg-light-surface border-x border-light-outline-variant p-6 flex flex-col items-center justify-center text-center gap-2 text-light-secondary">
-        <p className="font-headline text-headline-sm text-light-on-surface">
-          No properties configured yet
-        </p>
-        <p className="text-body-sm">
-          Add a property document in Firestore to start receiving guest threads.
-        </p>
-      </div>
-    );
-  }
+  const openAddProperty = () => {
+    setEditingProperty(null);
+    setIsPropertySheetOpen(true);
+  };
+
+  const openEditProperty = (property: Property) => {
+    setEditingProperty(property);
+    setIsPropertySheetOpen(true);
+  };
 
   const effectiveUserProfile =
     isLiveFirebase && authUser
@@ -325,170 +328,223 @@ export function App({
       : userProfile;
 
   const showBottomNav =
-    activeView === 'messages' ||
-    activeView === 'house-details' ||
-    activeView === 'account';
+    activeProperty !== null &&
+    (activeView === 'messages' ||
+      activeView === 'house-details' ||
+      activeView === 'account');
 
   return (
     <div className="min-h-screen flex flex-col max-w-[420px] mx-auto bg-light-surface border-x border-light-outline-variant relative">
-      {activeView === 'messages' && (
-        <MessagesView
-          properties={properties}
-          activeProperty={activeProperty}
-          otherPropertiesUnreadCount={otherPropertiesUnreadCount}
-          threads={threads}
-          getMessagesForThread={getMessagesForThread}
-          unresolvedUnmatched={unresolvedUnmatched}
-          lastSyncedLabel={lastSyncedLabel}
-          onSelectProperty={(nextPropId) => {
-            setSelectedPropertyId(nextPropId);
-            setActiveThreadId(null);
-          }}
-          onOpenDialogue={(threadId) => {
-            setActiveThreadId(threadId);
-            setActiveView('dialogue');
-          }}
-          onOpenThread={(threadId) => {
-            setActiveThreadId(threadId);
-            setThreadReturnTarget('messages');
-            setActiveView('thread');
-          }}
-          onDismissThread={(threadId) => dismissAsHandled(effectivePropertyId, threadId)}
-          onAssignUnmatched={async (unmatchedId, targetPropertyId) => {
-            await assignUnmatched(unmatchedId, targetPropertyId);
-            setSelectedPropertyId(targetPropertyId);
-          }}
-        />
-      )}
-
-      {activeView === 'dialogue' && activeThread && (
-        <AgentDialogueView
-          property={activeProperty}
-          thread={activeThread}
-          messages={getMessagesForThread(activeThread.id)}
-          onBack={() => setActiveView('messages')}
-          onOpenThread={() => {
-            setThreadReturnTarget('dialogue');
-            setActiveView('thread');
-          }}
-          onCoachTurn={async (options) => {
-            await runCoachTurn(effectivePropertyId, activeThread.id, options);
-          }}
-          onUpdateDraftEdit={(turnId, nextDraft) =>
-            updateDraftInSession(effectivePropertyId, activeThread.id, turnId, nextDraft)
-          }
-          onMarkSent={async ({ finalText, originalDraft }) => {
-            await markAsSent(effectivePropertyId, activeThread.id, {
-              finalText,
-              originalDraft,
-              loggedManually: false,
-            });
-            setActiveView('messages');
-          }}
-          onDismiss={async () => {
-            await dismissAsHandled(effectivePropertyId, activeThread.id);
-            setActiveView('messages');
-          }}
-        />
-      )}
-
-      {activeView === 'thread' && activeThread && (
-        <GuestThreadView
-          property={activeProperty}
-          thread={activeThread}
-          messages={getMessagesForThread(activeThread.id)}
-          returnTarget={threadReturnTarget}
-          onBack={() => setActiveView(threadReturnTarget)}
-          onOpenDialogue={() => setActiveView('dialogue')}
-          onLogManualReply={async (replyText) => {
-            await markAsSent(effectivePropertyId, activeThread.id, {
-              finalText: replyText,
-              loggedManually: true,
-            });
-          }}
-        />
-      )}
-
-      {(activeView === 'dialogue' || activeView === 'thread') && !activeThread && (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
-          <p className="font-headline text-headline-sm text-light-on-surface">
-            Conversation unavailable
-          </p>
-          <p className="text-body-sm text-light-secondary">
-            This thread may still be syncing or belongs to another property.
-          </p>
+      {!activeProperty ? (
+        <main className="flex-1 p-6 flex flex-col items-center justify-center text-center gap-4">
+          <img
+            src="/icon-192.png"
+            alt="Guest Co-Host"
+            className="w-14 h-14 shrink-0 object-contain"
+          />
+          <div className="flex flex-col gap-1.5 max-w-[300px]">
+            <h1 className="font-headline text-headline-md text-light-on-surface">
+              Add your first property
+            </h1>
+            <p className="text-body-md text-light-secondary">
+              Link an Airbnb listing to match incoming guest emails and check minimum nightly payouts.
+            </p>
+          </div>
           <button
             type="button"
-            onClick={() => {
-              setActiveThreadId(null);
-              setActiveView('messages');
-            }}
-            className="min-h-[40px] px-4 py-2 rounded-md bg-light-primary text-white font-label text-label-md font-semibold flex items-center gap-1.5"
+            onClick={openAddProperty}
+            className="w-full max-w-[260px] min-h-[44px] px-4 py-2.5 rounded-md bg-light-primary text-white font-label text-label-md font-semibold flex items-center justify-center gap-2 hover:opacity-95 transition"
           >
-            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-            <span>Back to Messages</span>
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            <span>Add Property</span>
           </button>
-        </div>
+          {isLiveFirebase && (
+            <button
+              type="button"
+              onClick={() => void handleSignOut()}
+              className="min-h-[38px] px-3 py-1 text-label-md font-medium text-light-secondary hover:text-light-on-surface transition"
+            >
+              Sign out
+            </button>
+          )}
+        </main>
+      ) : (
+        <>
+          {activeView === 'messages' && (
+            <MessagesView
+              properties={properties}
+              activeProperty={activeProperty}
+              otherPropertiesUnreadCount={otherPropertiesUnreadCount}
+              threads={threads}
+              getMessagesForThread={getMessagesForThread}
+              unresolvedUnmatched={unresolvedUnmatched}
+              lastSyncedLabel={lastSyncedLabel}
+              onSelectProperty={(nextPropId) => {
+                setSelectedPropertyId(nextPropId);
+                setActiveThreadId(null);
+              }}
+              onAddProperty={openAddProperty}
+              onOpenDialogue={(threadId) => {
+                setActiveThreadId(threadId);
+                setActiveView('dialogue');
+              }}
+              onOpenThread={(threadId) => {
+                setActiveThreadId(threadId);
+                setThreadReturnTarget('messages');
+                setActiveView('thread');
+              }}
+              onDismissThread={(threadId) => dismissAsHandled(effectivePropertyId, threadId)}
+              onAssignUnmatched={async (unmatchedId, targetPropertyId) => {
+                await assignUnmatched(unmatchedId, targetPropertyId);
+                setSelectedPropertyId(targetPropertyId);
+              }}
+            />
+          )}
+
+          {activeView === 'dialogue' && activeThread && (
+            <AgentDialogueView
+              property={activeProperty}
+              thread={activeThread}
+              messages={getMessagesForThread(activeThread.id)}
+              onBack={() => setActiveView('messages')}
+              onOpenThread={() => {
+                setThreadReturnTarget('dialogue');
+                setActiveView('thread');
+              }}
+              onCoachTurn={async (options) => {
+                await runCoachTurn(effectivePropertyId, activeThread.id, options);
+              }}
+              onUpdateDraftEdit={(turnId, nextDraft) =>
+                updateDraftInSession(effectivePropertyId, activeThread.id, turnId, nextDraft)
+              }
+              onMarkSent={async ({ finalText, originalDraft }) => {
+                await markAsSent(effectivePropertyId, activeThread.id, {
+                  finalText,
+                  originalDraft,
+                  loggedManually: false,
+                });
+                setActiveView('messages');
+              }}
+              onDismiss={async () => {
+                await dismissAsHandled(effectivePropertyId, activeThread.id);
+                setActiveView('messages');
+              }}
+            />
+          )}
+
+          {activeView === 'thread' && activeThread && (
+            <GuestThreadView
+              property={activeProperty}
+              thread={activeThread}
+              messages={getMessagesForThread(activeThread.id)}
+              returnTarget={threadReturnTarget}
+              onBack={() => setActiveView(threadReturnTarget)}
+              onOpenDialogue={() => setActiveView('dialogue')}
+              onLogManualReply={async (replyText) => {
+                await markAsSent(effectivePropertyId, activeThread.id, {
+                  finalText: replyText,
+                  loggedManually: true,
+                });
+              }}
+            />
+          )}
+
+          {(activeView === 'dialogue' || activeView === 'thread') && !activeThread && (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
+              <p className="font-headline text-headline-sm text-light-on-surface">
+                Conversation unavailable
+              </p>
+              <p className="text-body-sm text-light-secondary">
+                This thread may still be syncing or belongs to another property.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveThreadId(null);
+                  setActiveView('messages');
+                }}
+                className="min-h-[40px] px-4 py-2 rounded-md bg-light-primary text-white font-label text-label-md font-semibold flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                <span>Back to Messages</span>
+              </button>
+            </div>
+          )}
+
+          {activeView === 'house-details' && (
+            <HouseDetailsView
+              properties={properties}
+              activeProperty={activeProperty}
+              otherPropertiesUnreadCount={otherPropertiesUnreadCount}
+              rules={allRules}
+              onSelectProperty={(nextPropId) => {
+                setSelectedPropertyId(nextPropId);
+                setActiveThreadId(null);
+              }}
+              onAddProperty={openAddProperty}
+              onEditProperty={openEditProperty}
+              onOpenImport={() => setActiveView('import')}
+              onSaveRule={async (input) => {
+                await saveRule(input);
+              }}
+              onDeleteRule={removeRule}
+              onSavePricing={savePricing}
+              onSaveSignOffOverride={saveSignOffOverride}
+              onSaveVendor={saveVendor}
+              onDeleteVendor={removeVendor}
+            />
+          )}
+
+          {activeView === 'import' && (
+            <ImportKnowledgeView
+              property={activeProperty}
+              existingRules={allRules}
+              useRemoteApi={activeStore.mode === 'firestore'}
+              onCancel={() => setActiveView('house-details')}
+              onMerge={async (sourceTitle, sourceType, candidates) => {
+                await mergeImported(sourceTitle, sourceType, candidates);
+                setActiveView('house-details');
+              }}
+            />
+          )}
+
+          {activeView === 'account' && (
+            <AccountView
+              userProfile={effectiveUserProfile}
+              allowedEmails={allowedEmails}
+              ingestionHealth={ingestionHealth}
+              voiceProfile={voiceProfile}
+              isLiveFirebase={isLiveFirebase}
+              pushStatusMessage={pushStatusMessage}
+              isUpdatingPush={isUpdatingPush}
+              onTogglePush={togglePushEnabled}
+              onUpdateVoiceProfile={(updates) => activeStore.updateVoiceProfile(updates)}
+              onDeleteLearnedDiff={(diffId) => activeStore.deleteLearnedDiff(diffId)}
+              onSignOut={handleSignOut}
+            />
+          )}
+
+          {showBottomNav && (
+            <BottomNav
+              activeView={activeView}
+              totalWaitingCount={totalWaitingCount}
+              onNavigate={(nextTab) => setActiveView(nextTab)}
+            />
+          )}
+        </>
       )}
 
-      {activeView === 'house-details' && (
-        <HouseDetailsView
-          properties={properties}
-          activeProperty={activeProperty}
-          otherPropertiesUnreadCount={otherPropertiesUnreadCount}
-          rules={allRules}
-          onSelectProperty={(nextPropId) => {
-            setSelectedPropertyId(nextPropId);
-            setActiveThreadId(null);
-          }}
-          onOpenImport={() => setActiveView('import')}
-          onSaveRule={async (input) => {
-            await saveRule(input);
-          }}
-          onDeleteRule={removeRule}
-          onSavePricing={savePricing}
-          onSaveSignOffOverride={saveSignOffOverride}
-          onSaveVendor={saveVendor}
-          onDeleteVendor={removeVendor}
-        />
-      )}
-
-      {activeView === 'import' && (
-        <ImportKnowledgeView
-          property={activeProperty}
-          existingRules={allRules}
-          useRemoteApi={activeStore.mode === 'firestore'}
-          onCancel={() => setActiveView('house-details')}
-          onMerge={async (sourceTitle, sourceType, candidates) => {
-            await mergeImported(sourceTitle, sourceType, candidates);
-            setActiveView('house-details');
-          }}
-        />
-      )}
-
-      {activeView === 'account' && (
-        <AccountView
-          userProfile={effectiveUserProfile}
-          allowedEmails={allowedEmails}
-          ingestionHealth={ingestionHealth}
-          voiceProfile={voiceProfile}
-          isLiveFirebase={isLiveFirebase}
-          pushStatusMessage={pushStatusMessage}
-          isUpdatingPush={isUpdatingPush}
-          onTogglePush={togglePushEnabled}
-          onUpdateVoiceProfile={(updates) => activeStore.updateVoiceProfile(updates)}
-          onDeleteLearnedDiff={(diffId) => activeStore.deleteLearnedDiff(diffId)}
-          onSignOut={handleSignOut}
-        />
-      )}
-
-      {showBottomNav && (
-        <BottomNav
-          activeView={activeView}
-          totalWaitingCount={totalWaitingCount}
-          onNavigate={(nextTab) => setActiveView(nextTab)}
-        />
-      )}
+      <PropertyDetailsSheet
+        isOpen={isPropertySheetOpen}
+        property={editingProperty}
+        onClose={() => setIsPropertySheetOpen(false)}
+        onSave={async (input) => {
+          const saved = await saveProperty(input);
+          setSelectedPropertyId(saved.id);
+          setActiveThreadId(null);
+          return saved;
+        }}
+      />
     </div>
   );
 }

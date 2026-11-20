@@ -18,8 +18,16 @@ import type {
   VoiceProfile,
 } from '../types/cohost.ts';
 import { recalculateDiscountAlert } from '../utils/payoutHelpers.ts';
+import {
+  buildPropertySlugId,
+  mergeListingId,
+  mergeListingTitleAlias,
+  pickNextPropertySlot,
+} from '../utils/propertyHelpers.ts';
 
 const MAX_LEARNED_DIFFS = 15;
+const DEFAULT_LOCAL_TAX_PCT = 14;
+const DEFAULT_HOST_SERVICE_FEE_PCT = 15.5;
 
 export interface MarkSentOptions {
   finalText: string;
@@ -30,6 +38,17 @@ export interface MarkSentOptions {
 
 export interface SetCoachSessionOptions {
   skipRemoteSync?: boolean;
+}
+
+export interface UpsertPropertyInput {
+  id?: string;
+  name: string;
+  airbnbListingIds: string[];
+  primaryListingTitle: string | null;
+  nightlyFloor: number;
+  cleaningFee: number;
+  localTaxPct?: number;
+  hostServiceFeePct?: number;
 }
 
 export interface UpsertRuleInput {
@@ -46,6 +65,7 @@ export interface CohostStore {
   readonly mode: 'local' | 'firestore';
   subscribe(listener: () => void): () => void;
   getSnapshot(): CohostDataSnapshot;
+  upsertProperty(input: UpsertPropertyInput): Promise<Property>;
   updatePropertyPricing(propertyId: string, pricing: PropertyPricing): Promise<void>;
   updatePropertySignOff(propertyId: string, signOffOverride: string | null): Promise<void>;
   upsertVendor(propertyId: string, vendor: PropertyVendor): Promise<void>;
@@ -225,6 +245,133 @@ export class LocalCohostStore implements CohostStore {
     for (const listener of this.listeners) {
       listener();
     }
+  }
+
+  public async upsertProperty(input: UpsertPropertyInput): Promise<Property> {
+    const trimmedName = input.name.trim();
+    const cleanedIds = Array.from(
+      new Set(input.airbnbListingIds.map((id) => id.trim()).filter((id) => id.length > 0)),
+    );
+    const cleanedPrimaryTitle = input.primaryListingTitle?.trim() || null;
+
+    const existing = input.id
+      ? this.snapshot.properties.find((property) => property.id === input.id)
+      : undefined;
+
+    if (existing) {
+      const remainingAliases = existing.titleAliases.slice(1).filter((alias) => {
+        if (!cleanedPrimaryTitle) {
+          return true;
+        }
+        return alias.trim().toLowerCase() !== cleanedPrimaryTitle.toLowerCase();
+      });
+      const nextAliases = cleanedPrimaryTitle
+        ? [cleanedPrimaryTitle, ...remainingAliases]
+        : remainingAliases;
+
+      const nextPricing: PropertyPricing = {
+        nightlyFloor: Math.max(0, input.nightlyFloor),
+        cleaningFee: Math.max(0, input.cleaningFee),
+        localTaxPct:
+          input.localTaxPct !== undefined
+            ? Math.max(0, input.localTaxPct)
+            : existing.pricing.localTaxPct,
+        hostServiceFeePct:
+          input.hostServiceFeePct !== undefined
+            ? Math.min(99, Math.max(0, input.hostServiceFeePct))
+            : existing.pricing.hostServiceFeePct,
+      };
+
+      const existingThreads = this.snapshot.threads[existing.id] ?? [];
+      const nextThreadsForProperty = existingThreads.map((thread) => {
+        if (!thread.discountAlert) {
+          return thread;
+        }
+        const nextAlert = recalculateDiscountAlert(thread.discountAlert, nextPricing);
+        const nextStatus: ThreadStatus =
+          thread.status === 'flagged' || thread.status === 'needs_reply'
+            ? nextAlert.triggersWarning
+              ? 'flagged'
+              : 'needs_reply'
+            : thread.status;
+        return {
+          ...thread,
+          status: nextStatus,
+          discountAlert: nextAlert,
+        };
+      });
+      const nextThreadsMap = {
+        ...this.snapshot.threads,
+        [existing.id]: nextThreadsForProperty,
+      };
+
+      const updated: Property = {
+        ...existing,
+        name: trimmedName,
+        airbnbListingIds: cleanedIds,
+        titleAliases: nextAliases,
+        pricing: nextPricing,
+      };
+
+      const nextProperties = recomputePropertyCounts(
+        this.snapshot.properties.map((property) =>
+          property.id === existing.id ? updated : property,
+        ),
+        nextThreadsMap,
+      );
+
+      this.commit({
+        ...this.snapshot,
+        properties: nextProperties,
+        threads: nextThreadsMap,
+      });
+
+      return nextProperties.find((property) => property.id === existing.id) ?? updated;
+    }
+
+    const slot = pickNextPropertySlot(this.snapshot.properties);
+    const nextId = buildPropertySlugId(
+      trimmedName,
+      this.snapshot.properties.map((property) => property.id),
+    );
+    const created: Property = {
+      id: nextId,
+      name: trimmedName,
+      code: slot.code,
+      accentColor: slot.accentColor,
+      airbnbListingIds: cleanedIds,
+      titleAliases: cleanedPrimaryTitle ? [cleanedPrimaryTitle] : [],
+      signOffOverride: null,
+      needsReplyCount: 0,
+      flaggedCount: 0,
+      pricing: {
+        nightlyFloor: Math.max(0, input.nightlyFloor),
+        cleaningFee: Math.max(0, input.cleaningFee),
+        localTaxPct:
+          input.localTaxPct !== undefined ? Math.max(0, input.localTaxPct) : DEFAULT_LOCAL_TAX_PCT,
+        hostServiceFeePct:
+          input.hostServiceFeePct !== undefined
+            ? Math.min(99, Math.max(0, input.hostServiceFeePct))
+            : DEFAULT_HOST_SERVICE_FEE_PCT,
+      },
+      vendors: [],
+      knowledgeSources: [],
+    };
+
+    this.commit({
+      ...this.snapshot,
+      properties: [...this.snapshot.properties, created],
+      rules: {
+        ...this.snapshot.rules,
+        [nextId]: [],
+      },
+      threads: {
+        ...this.snapshot.threads,
+        [nextId]: [],
+      },
+    });
+
+    return created;
   }
 
   public async updatePropertyPricing(
@@ -626,9 +773,20 @@ export class LocalCohostStore implements CohostStore {
       item.id === unmatchedId ? { ...item, resolved: true } : item,
     );
 
+    const propertiesWithLearnedMatch = this.snapshot.properties.map((property) => {
+      if (property.id !== propertyId) {
+        return property;
+      }
+      return {
+        ...property,
+        airbnbListingIds: mergeListingId(property.airbnbListingIds, parsed.airbnbListingId),
+        titleAliases: mergeListingTitleAlias(property.titleAliases, parsed.listingTitleHint),
+      };
+    });
+
     this.commit({
       ...this.snapshot,
-      properties: recomputePropertyCounts(this.snapshot.properties, nextThreadsMap),
+      properties: recomputePropertyCounts(propertiesWithLearnedMatch, nextThreadsMap),
       threads: nextThreadsMap,
       messages: {
         ...this.snapshot.messages,

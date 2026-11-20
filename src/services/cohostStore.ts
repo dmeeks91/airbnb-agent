@@ -39,6 +39,7 @@ import {
   type CohostStore,
   type MarkSentOptions,
   type SetCoachSessionOptions,
+  type UpsertPropertyInput,
   type UpsertRuleInput,
 } from './localCohostStore.ts';
 
@@ -48,6 +49,7 @@ export {
   type CohostStore,
   type MarkSentOptions,
   type SetCoachSessionOptions,
+  type UpsertPropertyInput,
   type UpsertRuleInput,
 };
 
@@ -451,6 +453,34 @@ export class FirestoreCohostStore extends LocalCohostStore {
     );
 
     this.dataUnsubscribers.push(unsubMessages);
+  }
+
+  public override async upsertProperty(input: UpsertPropertyInput): Promise<Property> {
+    const isEdit = Boolean(
+      input.id && this.getSnapshot().properties.some((property) => property.id === input.id),
+    );
+    const saved = await super.upsertProperty(input);
+    const services = getFirebaseServices();
+    if (services) {
+      const propRef = doc(services.db, 'properties', saved.id);
+      if (isEdit) {
+        // Only write user-editable identity/pricing fields so concurrent server counters stay intact.
+        await setDoc(
+          propRef,
+          {
+            name: saved.name,
+            airbnbListingIds: saved.airbnbListingIds,
+            titleAliases: saved.titleAliases,
+            pricing: saved.pricing,
+          },
+          { merge: true },
+        );
+      } else {
+        await setDoc(propRef, saved);
+        this.watchPropertySubcollections(saved.id);
+      }
+    }
+    return saved;
   }
 
   public override async updatePropertyPricing(

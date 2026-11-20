@@ -350,4 +350,54 @@ describe('FirestoreCohostStore debounced coach session timer cancellation', () =
 
     store.dispose();
   });
+
+  it('writes full document on property create and merges only editable fields on property edit without clobbering server counters', async () => {
+    const store = new FirestoreCohostStore(createSeedSnapshot());
+
+    // Create a 3rd property -> auto-assigns slot C (#7F2A44) and defaults 14% tax / 15.5% fee
+    const created = await store.upsertProperty({
+      name: 'River Cottage',
+      airbnbListingIds: ['555444333'],
+      primaryListingTitle: 'River Cottage, Quiet Porch',
+      nightlyFloor: 210,
+      cleaningFee: 130,
+    });
+
+    expect(created.code).toBe('C');
+    expect(created.accentColor).toBe('#7F2A44');
+    expect(created.pricing).toEqual({
+      nightlyFloor: 210,
+      cleaningFee: 130,
+      localTaxPct: 14,
+      hostServiceFeePct: 15.5,
+    });
+    expect(setDocMock).toHaveBeenCalledTimes(1);
+    expect(setDocMock.mock.calls[0]?.[0]).toEqual({ path: `properties/${created.id}` });
+    expect(setDocMock.mock.calls[0]?.[1]).toEqual(created);
+
+    // Edit an existing property -> merges ONLY name, airbnbListingIds, titleAliases, pricing
+    setDocMock.mockClear();
+    const edited = await store.upsertProperty({
+      id: 'prop-coastal-loft',
+      name: 'Coastal Loft Renovated',
+      airbnbListingIds: ['900000000000000001', '900000000000000099'],
+      primaryListingTitle: 'Coastal Loft, Bay Views',
+      nightlyFloor: 205,
+      cleaningFee: 120,
+    });
+
+    expect(setDocMock).toHaveBeenCalledTimes(1);
+    expect(setDocMock.mock.calls[0]?.[0]).toEqual({ path: 'properties/prop-coastal-loft' });
+    expect(setDocMock.mock.calls[0]?.[1]).toEqual({
+      name: 'Coastal Loft Renovated',
+      airbnbListingIds: ['900000000000000001', '900000000000000099'],
+      titleAliases: edited.titleAliases,
+      pricing: edited.pricing,
+    });
+    expect(setDocMock.mock.calls[0]?.[2]).toEqual({ merge: true });
+    expect(edited.code).toBe('A');
+    expect(edited.accentColor).toBe('#095C57');
+
+    store.dispose();
+  });
 });

@@ -38,8 +38,8 @@ export function PayoutWarningBanner({ alert, pricing }: PayoutWarningBannerProps
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-label text-label-md font-semibold text-warning">
               {active.belowFloor
-                ? 'Below Your Net Nightly Floor'
-                : 'Meets Your Net Nightly Floor'}
+                ? 'Below Min Nightly Payout'
+                : 'Meets Min Nightly Payout'}
             </h2>
             <span className="px-2 py-0.5 rounded-full bg-white/80 border border-amber-300 font-code text-[11px] font-semibold text-amber-950">
               {formatMoney(active.estimatedNetPerNight)}/nt net
@@ -47,7 +47,7 @@ export function PayoutWarningBanner({ alert, pricing }: PayoutWarningBannerProps
           </div>
           <p className="text-body-sm text-amber-950 mt-0.5">
             Guest offered {formatMoney(alert.offeredAmount)} for {alert.nights}{' '}
-            {alert.nights === 1 ? 'night' : 'nights'}. Private floor is{' '}
+            {alert.nights === 1 ? 'night' : 'nights'}. Min nightly payout is{' '}
             {formatMoney(active.floorPerNight)}/nt (
             {active.deltaPerNight >= 0 ? '+' : '-'}
             {formatMoney(Math.abs(active.deltaPerNight))}/nt).

@@ -73,14 +73,15 @@ No heavy drop shadows. Elevation comes from tonal surface layering (`surface` ->
 All mobile views live inside a centered `max-w-[420px] min-h-screen` app shell on `#FAFAF9` with a sticky bottom navigation bar on top-level tabs (`Messages`, `House Details`, `Account`):
 
 1. **Messages (`#viewQueue`):**
-   * Sticky top header with app title and top-right **Property Switcher** dropdown showing the active property color dot, name, and an unread badge whenever another property has threads waiting.
+   * When no properties are configured yet, renders a focused `Add your first property` empty state with a single primary `Add Property` button launching `PropertyDetailsSheet`.
+   * Sticky top header with app title, clean active property indicator (auto-assigned color dot + property name without `Property A / B / C` prefixes), and top-right **Property Switcher** dropdown showing an unread badge whenever another property has threads waiting plus an `Add Property` footer action.
    * Compact **SearchInput** with an embedded `Filter` trigger tucked into the right edge opening an inline filter popover (`Status` + `Guest Stage`).
    * **Conditional Unmatched Banner** (V1 addition): Hidden when count is 0. When unmatched emails exist, renders a warm warning card allowing one-tap assignment to a property.
-   * Active `Needs Reply` and `Flagged` cards sorted to the top (single-line header, stay dates, stacked unanswered guest message preview, optional payout warning chip, quick `View thread` link, and quiet `Dismiss` / handled-on-Airbnb action).
+   * Active `Needs Reply` and `Flagged` cards sorted to the top (single-line header, stay dates, stacked unanswered guest message preview, optional `Below Min Nightly Payout` warning chip, quick `View thread` link, and quiet `Already handled` action).
    * Resolved / `Sent` cards collapsed to compact two-line rows underneath.
 2. **Agent Dialogue (`#viewDialogue`):**
-   * Minimal sticky header with back arrow to Messages, guest name + stay dates, `View thread` link, and overflow/quiet `Already handled on Airbnb` dismiss trigger.
-   * Optional **Discount / Net Payout Warning Banner** (`#FEF3C7` surface, `#8C4000` ink) showing the 15.5% host-only fee breakdown and a one-tap toggle between **All-in quote** and **Room rate only**.
+   * Minimal sticky header with back arrow to Messages, guest name + stay dates, `View thread` link, and quiet `Already handled on Airbnb` dismiss trigger.
+   * Optional **Discount / Net Payout Warning Banner** (`#FEF3C7` surface, `#8C4000` ink) showing `Below Min Nightly Payout` / `Meets Min Nightly Payout`, the 15.5% host-only fee breakdown, and a one-tap toggle between **All-in quote** and **Room rate only**.
    * Collapsible pinned unanswered guest message burst directly above the AI dialogue.
    * **On-demand Turn 1 draft** (clean loading skeleton while Vertex AI runs on first open) followed by multi-turn coaching bubbles and bottom composer.
    * Draft cards include inline `Edit` toggle (explicit white textarea), primary `Copy & Open Airbnb` button (deep-linking to the thread or pending reservation URL), and always-visible `Mark as Sent` button.
@@ -90,11 +91,13 @@ All mobile views live inside a centered `max-w-[420px] min-h-screen` app shell o
    * Preserves in-progress draft edits when navigating back to `Agent Dialogue`.
 4. **House Details (`#viewHouseDetails`):**
    * Property switcher header + collapsible Knowledge Sources card + `+ Import` CTA.
-   * Pricing & Guardrails card with separate fields for **Nightly Price Floor**, **Listed Cleaning Fee**, **Local Tax %**, **Host Service Fee %** (default 15.5%), and optional **Per-Property Sign-Off Override** (for co-hosted vs. primary-hosted listings).
+   * Compact **Airbnb Listing Match** card displaying the property's numeric Airbnb Listing IDs and Airbnb Listing Title(s) with an `Edit Listing` button opening `PropertyDetailsSheet`.
+   * Pricing & Guardrails card with separate fields for **Min Nightly Payout ($)**, **Cleaning Fee ($)**, **Local Tax (%)**, **Host Fee (%)** (default 15.5%), and optional **Per-Property Sign-Off Override** (for co-hosted vs. primary-hosted listings).
    * Searchable, categorized rules (`Access & Arrival`, `Timings & Rates`, `Amenities & Rules`) inside bounded mobile scroll containers with tap-to-edit rows and subtle badges for temporary/expiring notes.
    * Dedicated **Vendor Contacts** card with one-tap `tel:` call links and add/edit bottom sheet.
-5. **Rule Details Bottom Sheet (inside House Details):**
-   * Reusable `BottomSheet` with grab handle, rule topic, ground-truth value textarea, custom `SelectPopover` for category, origin metadata, **Temporary / Seasonal Note** toggle + custom `DatePickerPopover` for expiration date, primary Save button, and quiet Delete trigger.
+5. **Property Details & Rule Details Bottom Sheets:**
+   * **PropertyDetailsSheet** (`BottomSheet`) handles adding and editing properties with `Property Name`, `Airbnb Listing URL or ID` (auto-parsing `/rooms/<ID>`, `/hosting/listings/editor/<ID>`, `/manage-your-space/<ID>`, or raw numeric IDs into live green `Detected ID` pills, plus an amber warning on `/h/` or `abnb.me` short links), optional single-string `Airbnb Listing Title`, `Min Nightly Payout ($)`, and `Cleaning Fee ($)`. Accent colors auto-assign (Teal, Ochre, Rose, cycling) and Local Tax / Host Fee default to `14%` / `15.5%` on creation.
+   * **RuleDetailsSheet** (`BottomSheet`) with grab handle, rule topic, ground-truth value textarea, custom `SelectPopover` for category, origin metadata, **Temporary / Seasonal Note** toggle + custom `DatePickerPopover` for expiration date, primary Save button, and quiet Delete trigger.
 6. **Import Knowledge (`#viewImport`):**
    * Target property indicator pill + segmented source selector with three V1 paths: **Paste Text / Notes**, **PDF Upload**, and **Quick One-Liner**.
    * Extracted facts review checklist showing `New rule` vs. `Updates existing rule` conflict diffs before merging, plus a sticky bottom confirmation dock.

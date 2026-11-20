@@ -9,6 +9,8 @@ import {
   FolderOpen,
   Home,
   KeyRound,
+  Link2,
+  Pencil,
   Phone,
   PhoneCall,
   Plus,
@@ -38,6 +40,8 @@ export interface HouseDetailsViewProps {
   otherPropertiesUnreadCount: number;
   rules: readonly HouseRule[];
   onSelectProperty: (propertyId: string) => void;
+  onAddProperty: () => void;
+  onEditProperty: (property: Property) => void;
   onOpenImport: () => void;
   onSaveRule: (input: UpsertRuleInput) => Promise<void>;
   onDeleteRule: (ruleId: string) => Promise<void>;
@@ -113,7 +117,7 @@ function PricingGuardrailsCard({
           Pricing Guardrails &amp; Host Sign-Off
         </h2>
         <p className="text-body-sm text-light-secondary">
-          Nightly floor stays strictly private from guests and powers the 15.5% net payout check.
+          Min nightly payout stays strictly private from guests and powers the 15.5% net payout check.
         </p>
       </div>
 
@@ -121,7 +125,7 @@ function PricingGuardrailsCard({
         <div className="grid grid-cols-2 gap-2.5">
           <label className="flex flex-col gap-1">
             <span className="text-[11px] font-label font-semibold text-light-secondary uppercase tracking-wider">
-              Nightly Floor ($)
+              Min Nightly Payout ($)
             </span>
             <input
               type="number"
@@ -214,6 +218,8 @@ export function HouseDetailsView({
   otherPropertiesUnreadCount,
   rules,
   onSelectProperty,
+  onAddProperty,
+  onEditProperty,
   onOpenImport,
   onSaveRule,
   onDeleteRule,
@@ -287,6 +293,7 @@ export function HouseDetailsView({
           activePropertyId={activeProperty.id}
           otherPropertiesUnreadCount={otherPropertiesUnreadCount}
           onSelectProperty={onSelectProperty}
+          onAddProperty={onAddProperty}
         />
       </header>
 
@@ -349,6 +356,44 @@ export function HouseDetailsView({
               ))}
             </div>
           )}
+        </section>
+
+        <section className="bg-white rounded-lg border border-light-outline-variant p-3.5 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Link2 className={`w-4 h-4 shrink-0 ${theme.text}`} aria-hidden="true" />
+              <h2 className="font-label text-label-md font-semibold text-light-on-surface truncate">
+                Airbnb Listing Match
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => onEditProperty(activeProperty)}
+              className={`min-h-[34px] px-2.5 py-1 rounded-md border border-light-outline-variant bg-white font-label text-label-sm font-semibold flex items-center gap-1 hover:bg-stone-50 transition shrink-0 ${theme.text}`}
+            >
+              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Edit Listing</span>
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-1.5 text-body-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-light-secondary">Listing ID</span>
+              <span className="font-code text-[12px] text-light-on-surface truncate">
+                {activeProperty.airbnbListingIds.length > 0
+                  ? activeProperty.airbnbListingIds.join(', ')
+                  : 'Not set yet'}
+              </span>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-light-secondary shrink-0">Listing Title</span>
+              <span className="text-right text-light-on-surface break-words">
+                {activeProperty.titleAliases.length > 0
+                  ? activeProperty.titleAliases.join(' · ')
+                  : 'Auto-learned from emails'}
+              </span>
+            </div>
+          </div>
         </section>
 
         <PricingGuardrailsCard

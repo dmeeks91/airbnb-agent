@@ -1,4 +1,4 @@
-import { Building2, Check } from 'lucide-react';
+import { Building2, Check, Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { Property } from '../types/cohost.ts';
 import { getPropertyTheme } from '../utils/propertyHelpers.ts';
@@ -8,6 +8,7 @@ export interface PropertySwitcherProps {
   activePropertyId: string;
   otherPropertiesUnreadCount: number;
   onSelectProperty: (propertyId: string) => void;
+  onAddProperty?: () => void;
 }
 
 export function PropertySwitcher({
@@ -15,6 +16,7 @@ export function PropertySwitcher({
   activePropertyId,
   otherPropertiesUnreadCount,
   onSelectProperty,
+  onAddProperty,
 }: PropertySwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -103,31 +105,26 @@ export function PropertySwitcher({
                     className={`w-2.5 h-2.5 rounded-full shrink-0 ${theme.dotBg}`}
                     aria-hidden="true"
                   />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`font-label text-label-md font-semibold truncate ${
-                          isSelected ? theme.text : 'text-light-on-surface'
-                        }`}
-                      >
-                        Property {property.code}
-                      </span>
-                      {property.flaggedCount > 0 && (
-                        <span className="px-1.5 py-0.5 rounded-full bg-warning-surface text-warning font-code text-[10px] font-semibold">
-                          {property.flaggedCount} flagged
-                        </span>
-                      )}
-                      {property.flaggedCount === 0 && waitingCount > 0 && (
-                        <span
-                          className={`px-1.5 py-0.5 rounded-full font-code text-[10px] font-semibold ${theme.badgeBg}`}
-                        >
-                          {waitingCount} waiting
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[11px] text-light-secondary block truncate">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span
+                      className={`font-label text-label-md font-semibold truncate ${
+                        isSelected ? theme.text : 'text-light-on-surface'
+                      }`}
+                    >
                       {property.name}
                     </span>
+                    {property.flaggedCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-warning-surface text-warning font-code text-[10px] font-semibold shrink-0">
+                        {property.flaggedCount} flagged
+                      </span>
+                    )}
+                    {property.flaggedCount === 0 && waitingCount > 0 && (
+                      <span
+                        className={`px-1.5 py-0.5 rounded-full font-code text-[10px] font-semibold shrink-0 ${theme.badgeBg}`}
+                      >
+                        {waitingCount} waiting
+                      </span>
+                    )}
                   </div>
                 </div>
                 {isSelected && (
@@ -136,6 +133,23 @@ export function PropertySwitcher({
               </button>
             );
           })}
+
+          {onAddProperty && (
+            <div className="pt-1 mt-1 border-t border-light-outline-variant/60">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setIsOpen(false);
+                  onAddProperty();
+                }}
+                className="w-full min-h-[38px] px-2.5 py-2 rounded-md text-label-md font-semibold text-light-on-surface hover:bg-light-surface-container-low flex items-center gap-2 transition"
+              >
+                <Plus className="w-4 h-4 text-light-secondary" aria-hidden="true" />
+                <span>Add Property</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -35,6 +35,7 @@ export interface MessagesViewProps {
   unresolvedUnmatched: readonly UnmatchedEmail[];
   lastSyncedLabel: string;
   onSelectProperty: (propertyId: string) => void;
+  onAddProperty: () => void;
   onOpenDialogue: (threadId: string) => void;
   onOpenThread: (threadId: string) => void;
   onDismissThread: (threadId: string) => Promise<void>;
@@ -64,6 +65,7 @@ export function MessagesView({
   unresolvedUnmatched,
   lastSyncedLabel,
   onSelectProperty,
+  onAddProperty,
   onOpenDialogue,
   onOpenThread,
   onDismissThread,
@@ -148,9 +150,12 @@ export function MessagesView({
     <div className="flex flex-col flex-1 pb-24">
       <header className="px-4 py-3 border-b border-light-outline-variant bg-light-surface sticky top-0 z-20 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-light-primary text-light-on-primary flex items-center justify-center font-headline text-[15px] shrink-0">
-            H
-          </div>
+          <img
+            src="/icon-192.png"
+            alt=""
+            aria-hidden="true"
+            className="w-8 h-8 shrink-0 object-contain"
+          />
           <div className="min-w-0">
             <h1 className="font-headline text-headline-sm text-light-on-surface leading-tight">
               Guest Co-Host
@@ -176,6 +181,7 @@ export function MessagesView({
           activePropertyId={activeProperty.id}
           otherPropertiesUnreadCount={otherPropertiesUnreadCount}
           onSelectProperty={onSelectProperty}
+          onAddProperty={onAddProperty}
         />
       </header>
 
@@ -414,12 +420,12 @@ export function MessagesView({
                     />
                     <div className="text-body-sm text-amber-950">
                       <strong className="font-label text-label-sm font-semibold block">
-                        Discount Review: Below Net Floor
+                        Discount Review: Below Min Nightly Payout
                       </strong>
                       Guest offered ${liveDiscountAlert.offeredAmount} for{' '}
                       {liveDiscountAlert.nights} nights (~$
                       {defaultPayout.estimatedNetPerNight.toFixed(0)}/nt net vs $
-                      {defaultPayout.floorPerNight}/nt floor).
+                      {defaultPayout.floorPerNight}/nt min).
                     </div>
                   </div>
                 )}

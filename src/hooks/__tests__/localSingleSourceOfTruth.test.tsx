@@ -208,7 +208,7 @@ describe('Local dev single source of truth vs Firestore live API mode', () => {
       <App store={store} initialPropertyId="prop-mountain-chalet" initialView="house-details" />,
     );
 
-    const floorInput = screen.getByLabelText('Nightly Floor ($)');
+    const floorInput = screen.getByLabelText('Min Nightly Payout ($)');
     await user.clear(floorInput);
     await user.type(floorInput, '80');
 
@@ -228,12 +228,12 @@ describe('Local dev single source of truth vs Firestore live API mode', () => {
 
     // Navigate to Messages and open Sarah K.'s dialogue
     await user.click(screen.getByRole('button', { name: /Messages/i }));
-    expect(screen.queryByText('Discount Review: Below Net Floor')).toBeNull();
+    expect(screen.queryByText('Discount Review: Below Min Nightly Payout')).toBeNull();
     await user.click(screen.getByText(/Tap to open draft reply/));
 
     await waitFor(() => {
-      expect(document.body.contains(screen.getByText('Meets Your Net Nightly Floor'))).toBe(true);
-      expect(document.body.contains(screen.getByText(/Private floor is \$80\/nt/))).toBe(true);
+      expect(document.body.contains(screen.getByText('Meets Min Nightly Payout'))).toBe(true);
+      expect(document.body.contains(screen.getByText(/Min nightly payout is \$80\/nt/))).toBe(true);
       expect(document.body.contains(screen.getByText('Payout Math (0% host fee)'))).toBe(true);
     });
 

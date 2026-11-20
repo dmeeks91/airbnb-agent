@@ -22,6 +22,7 @@ import {
   readString,
   readStringArray,
 } from '../../utils/firestoreParsers.ts';
+import { mergeListingId, mergeListingTitleAlias } from '../../utils/propertyHelpers.ts';
 import { getFirebaseAdminServices } from '../config/firebaseAdmin.ts';
 import {
   IngestionService,
@@ -190,6 +191,25 @@ export class InMemoryServerRepository implements CohostServerRepository {
       ...snap,
       properties: snap.properties.map((p) =>
         p.id === propertyId ? { ...p, needsReplyCount, flaggedCount } : p,
+      ),
+    });
+  }
+
+  public async learnPropertyIdentifiers(
+    propertyId: string,
+    identifiers: { listingId?: string | null; titleHint?: string | null },
+  ): Promise<void> {
+    const snap = this.store.getSnapshot();
+    this.store = new LocalCohostStore({
+      ...snap,
+      properties: snap.properties.map((p) =>
+        p.id === propertyId
+          ? {
+              ...p,
+              airbnbListingIds: mergeListingId(p.airbnbListingIds, identifiers.listingId),
+              titleAliases: mergeListingTitleAlias(p.titleAliases, identifiers.titleHint),
+            }
+          : p,
       ),
     });
   }
@@ -471,6 +491,35 @@ class FirestoreServerRepository implements CohostServerRepository {
         }
       }
       tx.set(propertyRef, { needsReplyCount, flaggedCount }, { merge: true });
+    });
+  }
+
+  public async learnPropertyIdentifiers(
+    propertyId: string,
+    identifiers: { listingId?: string | null; titleHint?: string | null },
+  ): Promise<void> {
+    const admin = getFirebaseAdminServices();
+    if (!admin) {
+      return this.fallback.learnPropertyIdentifiers(propertyId, identifiers);
+    }
+    const propertyRef = admin.db.doc(`properties/${propertyId}`);
+    await admin.db.runTransaction(async (tx) => {
+      const snap = await tx.get(propertyRef);
+      const data = snap.data();
+      if (!snap.exists || !data) {
+        return;
+      }
+      const existingIds = readStringArray(data.airbnbListingIds);
+      const existingAliases = readStringArray(data.titleAliases);
+      const nextIds = mergeListingId(existingIds, identifiers.listingId);
+      const nextAliases = mergeListingTitleAlias(existingAliases, identifiers.titleHint);
+      if (nextIds.length !== existingIds.length || nextAliases.length !== existingAliases.length) {
+        tx.set(
+          propertyRef,
+          { airbnbListingIds: nextIds, titleAliases: nextAliases },
+          { merge: true },
+        );
+      }
     });
   }
 

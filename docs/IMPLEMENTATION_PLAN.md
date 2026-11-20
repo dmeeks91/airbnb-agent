@@ -7,19 +7,20 @@
 Guest Co-Host is a mobile-first Android PWA for managing Airbnb guest messaging across multiple properties, grounded in verified per-property facts and tuned to your writing voice.
 
 **Locked UX & Behavioral Decisions:**
-* **Single-property active view** on Messages with a top-right property switcher and an unread count badge when another property has messages waiting.
+* **Single-property active view & in-app property management:** Messages displays one active property at a time with a clean color dot and property name (no `Property A / B / C` prefixes). The top-right property switcher shows an unread count badge when another property has messages waiting and includes an `Add Property` footer action. When no properties exist yet, the empty state opens `Add Property` directly in the app.
+* **Streamlined Add / Edit Property & listing auto-learning:** `PropertyDetailsSheet` (accessible from the empty state, the Property Switcher, and the Airbnb Listing Match section in House Details) collects `Property Name`, `Airbnb Listing URL or ID`, optional single-string `Airbnb Listing Title` (never split on commas), `Min Nightly Payout ($)`, and `Cleaning Fee ($)`. Pasting a `/rooms/<ID>`, `/rooms/plus/<ID>`, `/hosting/listings/editor/<ID>`, or `/manage-your-space/<ID>` URL extracts the numeric listing ID live (warning if a `/h/` or `abnb.me` short share link hides the ID). New properties auto-assign the next accent color (Teal, Ochre, Rose, cycling) and default to `14%` local tax and `15.5%` host fee, both editable anytime in House Details. Whenever an email matches a property or is manually assigned from the unmatched banner, backend ingestion automatically learns any newly seen numeric listing ID or full listing title onto that property.
 * **Compact search bar + embedded Filter popover** (Status + Guest Stage) directly under the header, sorting Needs Reply and flagged threads to the top with Sent threads collapsed to two lines below.
 * **Conditional unmatched fallback:** No permanent unassigned card in the default queue. If all property matchers fail on an incoming email, the backend routes it to an unmatched queue, refuses to auto-draft, sends an alert, and surfaces a dismissible banner only while unmatched items exist so you can assign the property in one tap.
-* **Single primary responder:** No claim/release locks or backup escalation emails. Your husband can sign in with read/optional visibility via the Google Sign-In allowlist.
+* **Single primary responder:** No claim/release locks or backup escalation emails. Your husband can sign in with shared access via the flat Google Sign-In allowlist (`config/access.allowedEmails`).
 * **Direct-to-dialogue navigation:** Tapping a Needs Reply card opens Agent Dialogue directly. Tapping View thread (or any Sent card) opens the full-screen Guest Thread view with a manual reply logger at the bottom.
 * **Quick dismiss & automatic co-host reply sync:** Needs Reply cards and Agent Dialogue include an "Already handled on Airbnb" dismiss action that clears the queue without logging an unused AI draft into tone-memory diffs. When an Airbnb message digest ends with a Host or Co-host message (for example, a co-host replying inside Airbnb, or your own native Airbnb reply forwarded via your husband's co-host inbox), ingestion logs all messages in order into Guest Thread and automatically marks the thread as answered without firing a push notification.
 * **Per-property host context:** Properties support an optional primary-host/co-host sign-off override so co-hosted listings keep sign-offs consistent when guests address the primary host by name.
 * **On-demand Turn 1 drafting:** Background email ingestion parses, matches, checks for discount triggers, saves to Firestore, and fires the Android push immediately. Turn 1 drafts generate lazily when you open Agent Dialogue so drafts always use the latest house rules, group rapid-fire guest bursts cleanly, and avoid wasted calls on threads answered natively in Airbnb.
 * **Draft card behavior:** Every AI draft starting from Turn 1 supports inline Edit, Copy & Open Airbnb (using the thread or pending reservation deep link), and always-visible Mark as Sent (logs the final text, captures meaningful edits for tone memory, archives coaching notes, resets the active coaching session, and updates unread counts).
-* **Net payout guardrail (15.5% host-only fee):** Calculates estimated net payout applying Airbnb's 15.5% host-only fee to accommodation plus listed cleaning fee (excluding occupancy taxes collected and remitted by Airbnb; verified to the penny against live Airbnb receipts). Displays the math breakdown with a one-tap toggle between "guest quote is all-in (incl. tax & cleaning)" and "room rate before fees/tax".
+* **Net payout guardrail (15.5% host-only fee):** Calculates estimated net payout applying Airbnb's 15.5% host-only fee to accommodation plus listed cleaning fee (excluding occupancy taxes collected and remitted by Airbnb; verified to the penny against live Airbnb receipts). Compares net nightly payout against your private **Min Nightly Payout** and displays the math breakdown with a one-tap toggle between "guest quote is all-in (incl. tax & cleaning)" and "room rate before fees/tax".
 * **Hard prompt privacy guardrails:**
   * Server-side prompt assembly strips all `Access & Arrival` rules (door codes, Wi-Fi passwords, exact street address) whenever a thread is in `inquiry` stage (including inquiries, pre-approvals, and pending reservation requests).
-  * Nightly price floor is passed strictly as a private constraint so the model never quotes your minimum floor to a guest.
+  * Min Nightly Payout (`nightlyFloor`) is passed strictly as a private constraint so the model never quotes your minimum payout to a guest.
   * Untrusted guest email content is strictly delimited from system instructions and house rules.
 * **Reliable knowledge import (V1):** Paste Listing Text / Notes, PDF Upload (native Gemini multimodal), and Quick One-Liner Note, flagging conflicts (`Updates existing rule`) before merging. DOCX upload is excluded from V1.
 * **Rule lifecycle:** Rule Details bottom sheet supports an optional Temporary / Seasonal Note expiration date so expired fixes are excluded automatically from AI prompts.
@@ -155,11 +156,14 @@ airbnb-agent/
     │   ├── useThreads.ts                   # Live threads + messages + on-demand draft / dismiss actions
     │   ├── usePropertyRules.ts             # Live rules + vendor CRUD + expiry filtering
     │   └── usePushNotifications.ts         # Android FCM permission + token registration
-    ├── components/ui/
-    │   ├── SearchInput.tsx                 # Flex search input with embedded Filter slot
-    │   ├── SelectPopover.tsx               # Custom accessible dropdown (zero native <select>)
-    │   ├── DatePickerPopover.tsx           # Custom calendar popover for temporary rule expiry
-    │   └── BottomSheet.tsx                 # Reusable sheet for Rule Details & Vendor forms
+    ├── components/
+    │   ├── PropertyDetailsSheet.tsx        # Add / Edit Property sheet + Airbnb URL ID extractor
+    │   ├── PropertySwitcher.tsx            # Single-property switcher + Add Property footer action
+    │   └── ui/
+    │       ├── SearchInput.tsx             # Flex search input with embedded Filter slot
+    │       ├── SelectPopover.tsx           # Custom accessible dropdown (zero native <select>)
+    │       ├── DatePickerPopover.tsx       # Custom calendar popover for temporary rule expiry
+    │       └── BottomSheet.tsx             # Reusable sheet for Property, Rule & Vendor forms
     ├── views/
     │   ├── MessagesView.tsx                # Single-property queue + conditional unmatched banner
     │   ├── AgentDialogueView.tsx           # Pinned burst + lazy Turn 1 + payout breakdown + Dismiss
@@ -222,7 +226,8 @@ airbnb-agent/
 * Implement full-screen `GuestThreadView` with chronological bubbles, collapsed coaching notes disclosure, `+ Log manual reply`, and stateful back navigation preserving draft edits.
 
 ### Stage 3: Property Knowledge & Account
-* Implement `HouseDetailsView` (Nightly Price Floor, Listed Cleaning Fee, Local Tax %, Host Fee %, optional per-property sign-off override, categorized rules inside bounded scroll containers, vendor contacts with call/edit) and `RuleDetailsSheet` with optional Temporary / Seasonal Note expiration date (`DatePickerPopover`).
+* Implement `PropertyDetailsSheet` (in-app Add / Edit Property from the empty state, Property Switcher, and House Details Airbnb Listing Match card with pasted Airbnb URL ID extraction, optional single-string listing title, auto-assigned accent colors, and default 14% tax / 15.5% host fee).
+* Implement `HouseDetailsView` (Airbnb Listing Match card, Min Nightly Payout, Cleaning Fee, Local Tax %, Host Fee %, optional per-property sign-off override, categorized rules inside bounded scroll containers, vendor contacts with call/edit) and `RuleDetailsSheet` with optional Temporary / Seasonal Note expiration date (`DatePickerPopover`).
 * Implement `ImportKnowledgeView` for Paste Listing Text, PDF upload, and Quick One-Liner notes with `Updates existing rule` conflict review before merging.
 * Implement `AccountView` with Google Sign-In allowlist check, Android Push Alerts toggle, Gmail Watch & Dual-Inbox Health card, Sign-Off & Style Guardrails, and editable/deletable tone-memory diffs (max 15).
 

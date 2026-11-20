@@ -12,6 +12,7 @@ import { detectDiscountAlert } from './discountDetector.ts';
 import { parseAirbnbEmail } from './emailParser.ts';
 import { computeMessageFingerprint } from './messageFingerprint.ts';
 import { matchProperty } from './propertyMatcher.ts';
+import { mergeListingId, mergeListingTitleAlias } from '../../utils/propertyHelpers.ts';
 
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -51,6 +52,10 @@ export interface IngestionStorageAdapter {
   }): Promise<void>;
   saveUnmatchedEmail(item: UnmatchedEmail): Promise<void>;
   recomputePropertyCounters(propertyId: string): Promise<void>;
+  learnPropertyIdentifiers?(
+    propertyId: string,
+    identifiers: { listingId?: string | null; titleHint?: string | null },
+  ): Promise<void>;
 }
 
 export interface IngestionPushAdapter {
@@ -381,6 +386,22 @@ export class IngestionService {
 
     const gmailMessageId = parsed.gmailMessageId;
     const nowIso = parsed.sentAt || new Date().toISOString();
+
+    const learnedListingIds = mergeListingId(property.airbnbListingIds, parsed.airbnbListingId);
+    const learnedTitleAliases = mergeListingTitleAlias(
+      property.titleAliases,
+      parsed.listingTitleHint,
+    );
+    if (
+      this.storage.learnPropertyIdentifiers &&
+      (learnedListingIds.length > property.airbnbListingIds.length ||
+        learnedTitleAliases.length > property.titleAliases.length)
+    ) {
+      await this.storage.learnPropertyIdentifiers(property.id, {
+        listingId: parsed.airbnbListingId,
+        titleHint: parsed.listingTitleHint,
+      });
+    }
 
     const existingThread = findMatchingThread(
       propertyThreads,

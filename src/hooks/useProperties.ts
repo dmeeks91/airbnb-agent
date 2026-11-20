@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import type { CohostStore } from '../services/cohostStore.ts';
+import type { CohostStore, UpsertPropertyInput } from '../services/cohostStore.ts';
 import { requestAssignUnmatched } from '../services/apiClient.ts';
+import type { Property } from '../types/cohost.ts';
 import {
   findPropertyById,
   getOtherPropertiesUnreadCount,
@@ -25,6 +26,11 @@ export function useProperties(store: CohostStore, activePropertyId: string) {
   const unresolvedUnmatched = useMemo(
     () => snapshot.unmatchedEmails.filter((item) => !item.resolved),
     [snapshot.unmatchedEmails],
+  );
+
+  const saveProperty = useCallback(
+    (input: UpsertPropertyInput): Promise<Property> => store.upsertProperty(input),
+    [store],
   );
 
   const assignUnmatched = useCallback(
@@ -58,6 +64,7 @@ export function useProperties(store: CohostStore, activePropertyId: string) {
     voiceProfile: snapshot.voiceProfile,
     userProfile: snapshot.userProfile,
     allowedEmails: snapshot.allowedEmails,
+    saveProperty,
     assignUnmatched,
   };
 }

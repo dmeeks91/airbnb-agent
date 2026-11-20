@@ -87,6 +87,8 @@ export async function sendAndroidPushNotification(
           link: fullUrl,
         },
         notification: {
+          icon: '/icon-192.png',
+          badge: '/notification-badge.png',
           tag: payload.threadId ? `cohost-thread-${payload.threadId}` : 'cohost-alert',
           renotify: true,
         },

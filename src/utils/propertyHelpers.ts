@@ -56,8 +56,113 @@ const PROPERTY_THEMES: Record<PropertyCode, PropertyThemeClasses> = {
   },
 };
 
+const PROPERTY_ACCENT_SLOTS: readonly { code: PropertyCode; accentColor: string }[] = [
+  { code: 'A', accentColor: '#095C57' },
+  { code: 'B', accentColor: '#8C4A00' },
+  { code: 'C', accentColor: '#7F2A44' },
+];
+
+export interface ParsedListingInput {
+  listingIds: string[];
+  hasShortShareLink: boolean;
+}
+
 export function getPropertyTheme(code: PropertyCode): PropertyThemeClasses {
   return PROPERTY_THEMES[code];
+}
+
+export function pickNextPropertySlot(
+  existingProperties: readonly Property[],
+): { code: PropertyCode; accentColor: string } {
+  const usedCodes = new Set(existingProperties.map((p) => p.code));
+  const unused = PROPERTY_ACCENT_SLOTS.find((slot) => !usedCodes.has(slot.code));
+  if (unused) {
+    return unused;
+  }
+  return PROPERTY_ACCENT_SLOTS[existingProperties.length % PROPERTY_ACCENT_SLOTS.length];
+}
+
+export function buildPropertySlugId(name: string, existingIds: readonly string[]): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32);
+  const base = `prop-${slug || 'listing'}`;
+  const taken = new Set(existingIds);
+  if (!taken.has(base)) {
+    return base;
+  }
+  let suffix = 2;
+  while (taken.has(`${base}-${suffix}`)) {
+    suffix += 1;
+  }
+  return `${base}-${suffix}`;
+}
+
+/**
+ * Extracts numeric Airbnb listing IDs from pasted URLs (/rooms/<ID>,
+ * /hosting/listings/editor/<ID>, /manage-your-space/<ID>) or raw numeric IDs.
+ * Flags /h/<slug> and abnb.me short share links that hide the numeric ID behind a redirect.
+ */
+export function parseAirbnbListingInput(raw: string): ParsedListingInput {
+  const tokens = raw
+    .split(/[\s,]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  const listingIds: string[] = [];
+  let hasShortShareLink = false;
+
+  for (const token of tokens) {
+    if (/abnb\.me|airbnb\.[^/]+\/h\//i.test(token)) {
+      hasShortShareLink = true;
+      continue;
+    }
+
+    const urlMatch = token.match(
+      /(?:rooms(?:\/plus)?|hosting\/listings\/editor|manage-your-space)\/(\d{5,})/i,
+    );
+    if (urlMatch) {
+      if (!listingIds.includes(urlMatch[1])) {
+        listingIds.push(urlMatch[1]);
+      }
+      continue;
+    }
+
+    const rawDigits = token.replace(/^#/, '');
+    if (/^\d{5,}$/.test(rawDigits) && !listingIds.includes(rawDigits)) {
+      listingIds.push(rawDigits);
+    }
+  }
+
+  return { listingIds, hasShortShareLink };
+}
+
+export function mergeListingTitleAlias(
+  existingAliases: readonly string[],
+  incomingTitle: string | null | undefined,
+): string[] {
+  const cleaned = incomingTitle?.trim() ?? '';
+  if (cleaned.length < 4 || /(\.{3}|…)$/.test(cleaned)) {
+    return [...existingAliases];
+  }
+  const lower = cleaned.toLowerCase();
+  if (existingAliases.some((alias) => alias.trim().toLowerCase() === lower)) {
+    return [...existingAliases];
+  }
+  return [...existingAliases, cleaned];
+}
+
+export function mergeListingId(
+  existingIds: readonly string[],
+  incomingId: string | null | undefined,
+): string[] {
+  const cleaned = incomingId?.trim() ?? '';
+  if (!/^\d{5,}$/.test(cleaned) || existingIds.includes(cleaned)) {
+    return [...existingIds];
+  }
+  return [...existingIds, cleaned];
 }
 
 export function findPropertyById(
@@ -68,7 +173,7 @@ export function findPropertyById(
 }
 
 export function getPropertyDisplayLabel(property: Property): string {
-  return `Property ${property.code} · ${property.name}`;
+  return property.name;
 }
 
 export function getOtherPropertiesUnreadCount(

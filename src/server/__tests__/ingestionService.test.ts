@@ -354,4 +354,92 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
       expect(updated?.discountAlert).toBeNull();
     }
   });
+
+  it('auto-learns full listing titles from matched emails and learns both ID and title on unmatched assignment', async () => {
+    const seed = createSeedSnapshot();
+    const repo = new InMemoryServerRepository({
+      ...seed,
+      properties: [
+        {
+          ...seed.properties[0],
+          titleAliases: [],
+          airbnbListingIds: ['900000000000000001'],
+          needsReplyCount: 0,
+          flaggedCount: 0,
+        },
+        {
+          ...seed.properties[1],
+          needsReplyCount: 0,
+          flaggedCount: 0,
+        },
+      ],
+      threads: {
+        'prop-coastal-loft': [],
+        'prop-mountain-chalet': [],
+      },
+      messages: {},
+      unmatchedEmails: [],
+    });
+    const service = new IngestionService(repo, {
+      sendAlert: async () => {},
+    });
+
+    // Matched via Listing ID with a full listing title (containing a comma) -> auto-learned
+    const matchedWithTitleRaw = [
+      'From: Jamie Guest via Airbnb <express@airbnb.com>',
+      'To: cohost@example.com',
+      'Subject: Inquiry for Maple Loft, Chef Kitchen + Patio, Nov 12 - 15, 2026',
+      'Date: Tue, 03 Nov 2026 12:00:00 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'Hi! Is early check-in possible?',
+      'https://www.airbnb.com/rooms/900000000000000001',
+    ].join('\r\n');
+
+    const res = await service.processRawEmail(matchedWithTitleRaw, 'gm-learn-1');
+    expect(res.outcome).toBe('guest_message_ingested');
+    expect((await repo.getProperty('prop-coastal-loft'))?.titleAliases).toEqual([
+      'Maple Loft, Chef Kitchen + Patio',
+    ]);
+
+    // Truncated title with "..." must NOT be learned
+    const truncatedTitleRaw = [
+      'From: Morgan Guest via Airbnb <express@airbnb.com>',
+      'To: cohost@example.com',
+      'Subject: Inquiry for Maple Loft, Chef..., Nov 18 - 20, 2026',
+      'Date: Wed, 04 Nov 2026 12:00:00 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'Checking availability!',
+      'https://www.airbnb.com/rooms/900000000000000001',
+    ].join('\r\n');
+
+    await service.processRawEmail(truncatedTitleRaw, 'gm-learn-2');
+    expect((await repo.getProperty('prop-coastal-loft'))?.titleAliases).toEqual([
+      'Maple Loft, Chef Kitchen + Patio',
+    ]);
+
+    // Unmatched email with unknown Listing ID + title -> manual assign learns both
+    const unknownListingRaw = [
+      'From: Avery Guest via Airbnb <express@airbnb.com>',
+      'To: cohost@example.com',
+      'Subject: Inquiry for Brand New Cabin Title, Dec 1 - 4, 2026',
+      'Date: Thu, 05 Nov 2026 12:00:00 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'Can we bring our dog?',
+      'https://www.airbnb.com/rooms/777888999',
+    ].join('\r\n');
+
+    const unmatchedRes = await service.processRawEmail(unknownListingRaw, 'gm-learn-3');
+    expect(unmatchedRes.outcome).toBe('unmatched');
+    if (unmatchedRes.outcome !== 'unmatched') {
+      throw new Error('Expected unmatched outcome');
+    }
+
+    await repo.assignUnmatchedEmail(unmatchedRes.unmatchedId, 'prop-mountain-chalet');
+    const chalet = await repo.getProperty('prop-mountain-chalet');
+    expect(chalet?.airbnbListingIds).toContain('777888999');
+    expect(chalet?.titleAliases).toContain('Brand New Cabin Title');
+  });
 });
