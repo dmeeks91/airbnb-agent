@@ -3,6 +3,8 @@ import { ArrowLeft, Lock, LogIn } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { BottomNav } from './components/BottomNav.tsx';
 import { useProperties } from './hooks/useProperties.ts';
+import { usePropertyRules } from './hooks/usePropertyRules.ts';
+import { usePushNotifications } from './hooks/usePushNotifications.ts';
 import { useThreads } from './hooks/useThreads.ts';
 import {
   getFirebaseServices,
@@ -13,8 +15,11 @@ import {
 import { getHavenStore, type HavenStore } from './services/havenStore.ts';
 import type { HavenAppView } from './types/haven.ts';
 import { formatRelativeTime } from './utils/dateFormat.ts';
+import { AccountView } from './views/AccountView.tsx';
 import { AgentDialogueView } from './views/AgentDialogueView.tsx';
 import { GuestThreadView } from './views/GuestThreadView.tsx';
+import { HouseDetailsView } from './views/HouseDetailsView.tsx';
+import { ImportKnowledgeView } from './views/ImportKnowledgeView.tsx';
 import { MessagesView } from './views/MessagesView.tsx';
 
 export interface AuthSessionIdentity {
@@ -131,6 +136,7 @@ export function App({
     });
   }, [authGate, isLiveFirebase]);
 
+  // Support warm PWA push deep-links posted from public/firebase-messaging-sw.js
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
       return;
@@ -140,10 +146,8 @@ export function App({
       if (!isRecord(data) || data.type !== 'HAVEN_DEEP_LINK') {
         return;
       }
-      const targetProp =
-        typeof data.propertyId === 'string' && data.propertyId ? data.propertyId : null;
-      const targetThread =
-        typeof data.threadId === 'string' && data.threadId ? data.threadId : null;
+      const targetProp = typeof data.propertyId === 'string' && data.propertyId ? data.propertyId : null;
+      const targetThread = typeof data.threadId === 'string' && data.threadId ? data.threadId : null;
       const targetView = parseHavenAppView(data.view);
 
       if (targetProp) {
@@ -176,6 +180,7 @@ export function App({
     otherPropertiesUnreadCount,
     unresolvedUnmatched,
     ingestionHealth,
+    voiceProfile,
     userProfile,
     allowedEmails,
     assignUnmatched,
@@ -192,6 +197,23 @@ export function App({
     markAsSent,
     dismissAsHandled,
   } = useThreads(activeStore, effectivePropertyId);
+
+  const {
+    allRules,
+    saveRule,
+    removeRule,
+    mergeImported,
+    savePricing,
+    saveSignOffOverride,
+    saveVendor,
+    removeVendor,
+  } = usePropertyRules(activeStore, effectivePropertyId);
+
+  const {
+    isUpdating: isUpdatingPush,
+    statusMessage: pushStatusMessage,
+    togglePushEnabled,
+  } = usePushNotifications(activeStore);
 
   const totalWaitingCount = useMemo(
     () =>
@@ -291,6 +313,16 @@ export function App({
       </div>
     );
   }
+
+  const effectiveUserProfile =
+    isLiveFirebase && authUser
+      ? {
+          ...userProfile,
+          uid: authUser.uid,
+          email: authUser.email ?? userProfile.email,
+          displayName: authUser.displayName ?? userProfile.displayName,
+        }
+      : userProfile;
 
   const showBottomNav =
     activeView === 'messages' ||
@@ -399,10 +431,55 @@ export function App({
         </div>
       )}
 
-      {(activeView === 'house-details' || activeView === 'import' || activeView === 'account') && (
-        <div className="flex-1 p-6 pb-24 text-body-md text-light-secondary">
-          Stage 3 views pending.
-        </div>
+      {activeView === 'house-details' && (
+        <HouseDetailsView
+          properties={properties}
+          activeProperty={activeProperty}
+          otherPropertiesUnreadCount={otherPropertiesUnreadCount}
+          rules={allRules}
+          onSelectProperty={(nextPropId) => {
+            setSelectedPropertyId(nextPropId);
+            setActiveThreadId(null);
+          }}
+          onOpenImport={() => setActiveView('import')}
+          onSaveRule={async (input) => {
+            await saveRule(input);
+          }}
+          onDeleteRule={removeRule}
+          onSavePricing={savePricing}
+          onSaveSignOffOverride={saveSignOffOverride}
+          onSaveVendor={saveVendor}
+          onDeleteVendor={removeVendor}
+        />
+      )}
+
+      {activeView === 'import' && (
+        <ImportKnowledgeView
+          property={activeProperty}
+          existingRules={allRules}
+          useRemoteApi={activeStore.mode === 'firestore'}
+          onCancel={() => setActiveView('house-details')}
+          onMerge={async (sourceTitle, sourceType, candidates) => {
+            await mergeImported(sourceTitle, sourceType, candidates);
+            setActiveView('house-details');
+          }}
+        />
+      )}
+
+      {activeView === 'account' && (
+        <AccountView
+          userProfile={effectiveUserProfile}
+          allowedEmails={allowedEmails}
+          ingestionHealth={ingestionHealth}
+          voiceProfile={voiceProfile}
+          isLiveFirebase={isLiveFirebase}
+          pushStatusMessage={pushStatusMessage}
+          isUpdatingPush={isUpdatingPush}
+          onTogglePush={togglePushEnabled}
+          onUpdateVoiceProfile={(updates) => activeStore.updateVoiceProfile(updates)}
+          onDeleteLearnedDiff={(diffId) => activeStore.deleteLearnedDiff(diffId)}
+          onSignOut={handleSignOut}
+        />
       )}
 
       {showBottomNav && (
