@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Property } from '../../types/cohost.ts';
 import {
   buildPropertySlugId,
+  dedupeListingTitleAliases,
   getPropertyDisplayLabel,
   mergeListingId,
   mergeListingTitleAlias,
@@ -103,9 +104,12 @@ describe('propertyHelpers', () => {
     ).toEqual({ code: 'A', accentColor: '#095C57' });
   });
 
-  it('merges full listing titles without splitting commas and skips truncated or duplicate hints', () => {
+  it('merges full listing titles without splitting commas and strips stay-date suffixes', () => {
     const initial = ['Maple Loft, Chef Kitchen & Patio'];
     expect(mergeListingTitleAlias(initial, 'maple loft, chef kitchen & patio')).toEqual(initial);
+    expect(mergeListingTitleAlias(initial, 'Maple Loft, Chef Kitchen & Patio, 31 Oct – 2 Nov')).toEqual(initial);
+    expect(mergeListingTitleAlias(initial, 'Maple Loft, Chef Kitchen & Patio, 14–16 Dec')).toEqual(initial);
+    expect(mergeListingTitleAlias(initial, 'Maple Loft, Chef Kitchen & Patio, Oct 31 - Nov 2')).toEqual(initial);
     expect(mergeListingTitleAlias(initial, 'Maple Loft, Chef Kitchen...')).toEqual(initial);
     expect(mergeListingTitleAlias(initial, 'Maple Loft…')).toEqual(initial);
     expect(mergeListingTitleAlias(initial, 'abc')).toEqual(initial);
@@ -113,6 +117,13 @@ describe('propertyHelpers', () => {
       'Maple Loft, Chef Kitchen & Patio',
       'Maple Loft, Downtown Retreat',
     ]);
+    expect(
+      dedupeListingTitleAliases([
+        '3BR Haven | Chef Kitchen',
+        '3BR Haven | Chef Kitchen, 31 Oct – 2 Nov',
+        '3BR Haven | Chef Kitchen, 14–16 Dec',
+      ]),
+    ).toEqual(['3BR Haven | Chef Kitchen']);
   });
 
   it('merges numeric listing IDs cleanly without duplicates', () => {

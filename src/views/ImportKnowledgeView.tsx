@@ -6,7 +6,6 @@ import {
   StickyNote,
   Upload,
   X,
-  Zap,
 } from 'lucide-react';
 import { useState, type ChangeEvent } from 'react';
 import { ApiClientError, requestKnowledgeExtraction } from '../services/apiClient.ts';
@@ -37,7 +36,6 @@ const SOURCE_TABS: readonly {
 }[] = [
   { type: 'paste_text', label: 'Paste Text' },
   { type: 'pdf_upload', label: 'PDF Upload' },
-  { type: 'quick_note', label: 'One-Liner' },
 ];
 
 export function ImportKnowledgeView({
@@ -50,7 +48,6 @@ export function ImportKnowledgeView({
   const [sourceType, setSourceType] = useState<KnowledgeSourceType>('paste_text');
   const [sourceTitle, setSourceTitle] = useState('');
   const [pastedText, setPastedText] = useState('');
-  const [quickNote, setQuickNote] = useState('');
   const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
   const [candidates, setCandidates] = useState<ExtractedRuleCandidate[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -74,11 +71,9 @@ export function ImportKnowledgeView({
       sourceTitle.trim() ||
       (sourceType === 'pdf_upload'
         ? selectedPdf?.name ?? 'Uploaded Guidebook.pdf'
-        : sourceType === 'quick_note'
-          ? 'Quick One-Liner Note'
-          : 'Pasted Listing Notes');
+        : 'Pasted Listing Notes');
 
-    const textPayload = sourceType === 'quick_note' ? quickNote.trim() : pastedText.trim();
+    const textPayload = pastedText.trim();
 
     if (sourceType === 'pdf_upload' && !selectedPdf) {
       setErrorMessage('Select a PDF guidebook or house manual first.');
@@ -175,9 +170,7 @@ export function ImportKnowledgeView({
       sourceTitle.trim() ||
       (sourceType === 'pdf_upload'
         ? selectedPdf?.name ?? 'Uploaded Guidebook.pdf'
-        : sourceType === 'quick_note'
-          ? 'Quick One-Liner Note'
-          : 'Pasted Listing Notes');
+        : 'Pasted Listing Notes');
 
     await onMerge(resolvedTitle, sourceType, approved);
   };
@@ -253,7 +246,6 @@ export function ImportKnowledgeView({
                   {tab.type === 'pdf_upload' && (
                     <FileText className="w-4 h-4" aria-hidden="true" />
                   )}
-                  {tab.type === 'quick_note' && <Zap className="w-4 h-4" aria-hidden="true" />}
                   <span>{tab.label}</span>
                 </button>
               );
@@ -325,21 +317,6 @@ export function ImportKnowledgeView({
                 </div>
               )}
             </div>
-          )}
-
-          {sourceType === 'quick_note' && (
-            <label className="flex flex-col gap-1">
-              <span className="font-label text-label-sm font-semibold text-light-secondary uppercase tracking-wider">
-                Quick One-Liner Fact
-              </span>
-              <input
-                type="text"
-                value={quickNote}
-                onChange={(event) => setQuickNote(event.target.value)}
-                placeholder="e.g. Trash pickup moved to Wednesday mornings at 7 AM"
-                className="min-h-[42px] px-3 py-2 bg-white border border-light-outline-variant rounded-md text-body-md text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-light-primary"
-              />
-            </label>
           )}
 
           {errorMessage && (

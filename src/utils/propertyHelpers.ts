@@ -139,19 +139,45 @@ export function parseAirbnbListingInput(raw: string): ParsedListingInput {
   return { listingIds, hasShortShareLink };
 }
 
+const TRAILING_STAY_DATES_RE =
+  /,\s*(?:\d{1,2}(?:\s+[A-Za-z]{3,9})?\s*[–\-—]\s*\d{1,2}\s+[A-Za-z]{3,9}|[A-Za-z]{3,9}\s+\d{1,2}\s*[–\-—]\s*(?:[A-Za-z]{3,9}\s+)?\d{1,2})(?:,?\s*\d{4})?\s*$/;
+
+export function cleanListingTitle(title: string): string {
+  return title.trim().replace(TRAILING_STAY_DATES_RE, '').trim();
+}
+
+export function dedupeListingTitleAliases(aliases: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const alias of aliases) {
+    const cleaned = cleanListingTitle(alias);
+    if (cleaned.length < 4 || /(\.{3}|…)$/.test(cleaned)) {
+      continue;
+    }
+    const lower = cleaned.toLowerCase();
+    if (seen.has(lower)) {
+      continue;
+    }
+    seen.add(lower);
+    deduped.push(cleaned);
+  }
+  return deduped;
+}
+
 export function mergeListingTitleAlias(
   existingAliases: readonly string[],
   incomingTitle: string | null | undefined,
 ): string[] {
-  const cleaned = incomingTitle?.trim() ?? '';
+  const baseAliases = dedupeListingTitleAliases(existingAliases);
+  const cleaned = cleanListingTitle(incomingTitle ?? '');
   if (cleaned.length < 4 || /(\.{3}|…)$/.test(cleaned)) {
-    return [...existingAliases];
+    return baseAliases;
   }
   const lower = cleaned.toLowerCase();
-  if (existingAliases.some((alias) => alias.trim().toLowerCase() === lower)) {
-    return [...existingAliases];
+  if (baseAliases.some((alias) => alias.toLowerCase() === lower)) {
+    return baseAliases;
   }
-  return [...existingAliases, cleaned];
+  return [...baseAliases, cleaned];
 }
 
 export function mergeListingId(

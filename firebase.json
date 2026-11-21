@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "guest-cohost",
     "public": "firebase-public",
     "ignore": [
       "firebase.json",

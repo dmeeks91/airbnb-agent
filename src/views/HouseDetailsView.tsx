@@ -30,7 +30,11 @@ import type {
   RuleCategory,
 } from '../types/cohost.ts';
 import { formatCalendarDate } from '../utils/dateFormat.ts';
-import { getPropertyDisplayLabel, getPropertyTheme } from '../utils/propertyHelpers.ts';
+import {
+  dedupeListingTitleAliases,
+  getPropertyDisplayLabel,
+  getPropertyTheme,
+} from '../utils/propertyHelpers.ts';
 import { groupRulesByCategory, isRuleExpired } from '../utils/ruleFilters.ts';
 import { RuleDetailsSheet } from './RuleDetailsSheet.tsx';
 
@@ -388,9 +392,12 @@ export function HouseDetailsView({
             <div className="flex items-start justify-between gap-3">
               <span className="text-light-secondary shrink-0">Listing Title</span>
               <span className="text-right text-light-on-surface break-words">
-                {activeProperty.titleAliases.length > 0
-                  ? activeProperty.titleAliases.join(' · ')
-                  : 'Auto-learned from emails'}
+                {(() => {
+                  const cleanTitles = dedupeListingTitleAliases(activeProperty.titleAliases);
+                  return cleanTitles.length > 0
+                    ? cleanTitles.join(' · ')
+                    : 'Auto-learned from emails';
+                })()}
               </span>
             </div>
           </div>

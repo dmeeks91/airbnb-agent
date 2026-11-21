@@ -83,10 +83,10 @@ describe('Stage 3: House Details, Rule Details Sheet, Import Knowledge & Account
     await user.click(screen.getByRole('button', { name: 'Import' }));
     expect(document.body.contains(screen.getByText('Import House Details'))).toBe(true);
 
-    // Verify only the 3 V1 tabs exist
+    // Verify only the V1 tabs exist (Paste Text and PDF Upload)
     expect(document.body.contains(screen.getByRole('tab', { name: 'Paste Text' }))).toBe(true);
     expect(document.body.contains(screen.getByRole('tab', { name: 'PDF Upload' }))).toBe(true);
-    expect(document.body.contains(screen.getByRole('tab', { name: 'One-Liner' }))).toBe(true);
+    expect(screen.queryByRole('tab', { name: 'One-Liner' })).toBeNull();
     expect(screen.queryByText(/Airbnb Link/i)).toBeNull();
 
     // Paste text with one conflict (Parking Allocation) and one new rule (Coffee Setup)
@@ -117,22 +117,10 @@ describe('Stage 3: House Details, Rule Details Sheet, Import Knowledge & Account
     });
   });
 
-  it('supports One-Liner and PDF upload import paths', async () => {
+  it('supports PDF upload import path', async () => {
     const user = userEvent.setup();
     const store = createLocalCohostStore();
     render(<App store={store} initialView="import" />);
-
-    // One-Liner tab
-    await user.click(screen.getByRole('tab', { name: 'One-Liner' }));
-    await user.type(
-      screen.getByLabelText('Quick One-Liner Fact'),
-      'Grill Fuel: Extra propane tank is stored next to the garage door.',
-    );
-    await user.click(screen.getByRole('button', { name: 'Extract Rules' }));
-
-    await waitFor(() => {
-      expect(document.body.contains(screen.getByText('Grill Fuel'))).toBe(true);
-    });
 
     // PDF Upload tab
     await user.click(screen.getByRole('tab', { name: 'PDF Upload' }));
