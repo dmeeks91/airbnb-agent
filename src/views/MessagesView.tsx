@@ -4,6 +4,7 @@ import {
   CheckCheck,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
   MessageSquareText,
   SlidersHorizontal,
   Sparkles,
@@ -82,6 +83,7 @@ export function MessagesView({
   const [stageFilter, setStageFilter] = useState<StageFilter>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [dismissedUnmatchedKey, setDismissedUnmatchedKey] = useState<string | null>(null);
+  const [expandedUnmatchedId, setExpandedUnmatchedId] = useState<string | null>(null);
 
   const theme = getPropertyTheme(activeProperty.code);
 
@@ -335,37 +337,94 @@ export function MessagesView({
               </button>
             </div>
 
-            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto overscroll-contain">
-              {unresolvedUnmatched.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-md border border-amber-200 p-2.5 flex flex-col gap-2"
-                >
-                  <div className="min-w-0">
-                    <p className="font-label text-label-md font-semibold text-slate-900 truncate">
-                      {item.guestName} · {item.subject}
-                    </p>
-                    <p className="text-body-sm text-slate-600 line-clamp-2 mt-0.5 break-words [overflow-wrap:anywhere]">
-                      &ldquo;{item.bodyPreview}&rdquo;
-                    </p>
-                  </div>
-                  <SelectPopover
-                    value=""
-                    options={unmatchedActionOptions}
-                    placeholder="Assign or delete..."
-                    label={`Assign or delete ${item.subject}`}
-                    anchorMode="anchored"
-                    compact
-                    onChange={(selectedValue) => {
-                      if (selectedValue === DELETE_UNMATCHED_OPTION_VALUE) {
-                        void onDeleteUnmatched(item.id);
-                      } else if (selectedValue) {
-                        void onAssignUnmatched(item.id, selectedValue);
+            <div className="flex flex-col gap-2 max-h-[55vh] overflow-y-auto overscroll-contain">
+              {unresolvedUnmatched.map((item) => {
+                const isExpanded = expandedUnmatchedId === item.id;
+                const fullBody = item.rawParsed.bodyText.trim() || item.bodyPreview;
+                const airbnbUrl =
+                  item.rawParsed.airbnbThreadUrl ?? item.rawParsed.allAirbnbUrls[0] ?? null;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-md border border-amber-200 p-2.5 flex flex-col gap-2 min-w-0"
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedUnmatchedId((prev) => (prev === item.id ? null : item.id))
                       }
-                    }}
-                  />
-                </div>
-              ))}
+                      aria-expanded={isExpanded}
+                      className="w-full text-left flex flex-col gap-1 min-w-0"
+                    >
+                      <div className="flex items-start justify-between gap-2 min-w-0">
+                        <p
+                          className={`font-label text-label-md font-semibold text-slate-900 ${
+                            isExpanded
+                              ? 'leading-snug break-words [overflow-wrap:anywhere]'
+                              : 'truncate'
+                          }`}
+                        >
+                          {item.guestName} · {item.subject}
+                        </p>
+                        <span className="text-[11px] font-label font-semibold text-warning inline-flex items-center gap-0.5 shrink-0 pt-0.5">
+                          <span>{isExpanded ? 'Hide' : 'Full'}</span>
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 transition-transform ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`}
+                            aria-hidden="true"
+                          />
+                        </span>
+                      </div>
+                      {!isExpanded && (
+                        <p className="text-body-sm text-slate-600 line-clamp-2 break-words [overflow-wrap:anywhere]">
+                          &ldquo;{item.bodyPreview}&rdquo;
+                        </p>
+                      )}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="flex flex-col gap-1.5 min-w-0">
+                        <div className="p-2.5 rounded-md bg-stone-50 border border-stone-200 max-h-48 overflow-y-auto overscroll-contain text-body-sm text-slate-800 whitespace-pre-line break-words [overflow-wrap:anywhere] leading-relaxed">
+                          {fullBody}
+                        </div>
+                        {airbnbUrl && (
+                          <div className="flex items-center justify-end">
+                            <a
+                              href={airbnbUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`inline-flex items-center gap-1 text-[11px] font-label font-semibold hover:underline ${theme.text}`}
+                            >
+                              <span>Open on Airbnb</span>
+                              <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <SelectPopover
+                      value=""
+                      options={unmatchedActionOptions}
+                      placeholder="Assign or delete..."
+                      label={`Assign or delete ${item.subject}`}
+                      anchorMode="anchored"
+                      compact
+                      onChange={(selectedValue) => {
+                        if (selectedValue === DELETE_UNMATCHED_OPTION_VALUE) {
+                          setExpandedUnmatchedId((prev) => (prev === item.id ? null : prev));
+                          void onDeleteUnmatched(item.id);
+                        } else if (selectedValue) {
+                          setExpandedUnmatchedId((prev) => (prev === item.id ? null : prev));
+                          void onAssignUnmatched(item.id, selectedValue);
+                        }
+                      }}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}

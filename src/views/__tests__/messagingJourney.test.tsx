@@ -150,6 +150,19 @@ describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Threa
     });
     expect(document.body.contains(unmatchedSection)).toBe(true);
 
+    // Expand Devon P.'s unmatched card inline to inspect the full message and Airbnb link
+    const expandButton = screen.getByRole('button', { name: /^Devon P\./ });
+    expect(expandButton.getAttribute('aria-expanded')).toBe('false');
+    await user.click(expandButton);
+    expect(expandButton.getAttribute('aria-expanded')).toBe('true');
+    expect(document.body.contains(screen.getByText(unmatched.rawParsed.bodyText))).toBe(true);
+    const openLink = screen.getByRole('link', { name: 'Open on Airbnb' });
+    expect(openLink.getAttribute('href')).toBe(unmatched.rawParsed.airbnbThreadUrl);
+
+    // Collapse back cleanly
+    await user.click(expandButton);
+    expect(expandButton.getAttribute('aria-expanded')).toBe('false');
+
     // Delete the junk unmatched notice via the anchored dropdown menu
     await user.click(
       screen.getByRole('button', { name: 'Assign or delete Your co-host invitation was sent' }),
