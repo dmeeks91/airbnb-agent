@@ -182,4 +182,42 @@ describe('promptBuilder security & voice guardrails', () => {
       sanitizeDraftOutput('Rates are $180–$220 for floors 1–2–3 (check-in 4—6 PM) — thanks!'),
     ).toBe('Rates are $180-$220 for floors 1-2-3 (check-in 4-6 PM), thanks!');
   });
+
+  it('includes welcomeGuideUrl for confirmed stays and withholds external links on inquiries', () => {
+    const seed = createSeedSnapshot();
+    const coastal = {
+      ...seed.properties.find((p) => p.id === 'prop-coastal-loft')!,
+      welcomeGuideUrl: 'https://example.web.app/welcome-guide',
+    };
+    const confirmedThread = {
+      ...seed.threads['prop-coastal-loft'][0],
+      stage: 'confirmed' as const,
+    };
+    const inquiryThread = {
+      ...seed.threads['prop-coastal-loft'][0],
+      stage: 'inquiry' as const,
+    };
+
+    const confirmedPrompt = buildCoachPrompt({
+      property: coastal,
+      thread: confirmedThread,
+      messages: seed.messages[confirmedThread.id],
+      rules: seed.rules['prop-coastal-loft'],
+      voiceProfile: seed.voiceProfile,
+    });
+    expect(confirmedPrompt.systemInstruction).toContain(
+      'Property Guest Welcome Guide URL: https://example.web.app/welcome-guide',
+    );
+
+    const inquiryPrompt = buildCoachPrompt({
+      property: coastal,
+      thread: inquiryThread,
+      messages: seed.messages[inquiryThread.id],
+      rules: seed.rules['prop-coastal-loft'],
+      voiceProfile: seed.voiceProfile,
+    });
+    expect(inquiryPrompt.systemInstruction).toContain(
+      'Do NOT include external URLs in inquiry replies.',
+    );
+  });
 });

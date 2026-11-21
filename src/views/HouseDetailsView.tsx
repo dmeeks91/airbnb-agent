@@ -345,6 +345,8 @@ export function HouseDetailsView({
                 >
                   {source.type === 'pdf_upload' ? (
                     <FileText className="w-4 h-4 text-purple-700 shrink-0" aria-hidden="true" />
+                  ) : source.type === 'url_import' ? (
+                    <Link2 className="w-4 h-4 text-property-a shrink-0" aria-hidden="true" />
                   ) : (
                     <StickyNote className={`w-4 h-4 shrink-0 ${theme.text}`} aria-hidden="true" />
                   )}
@@ -400,6 +402,19 @@ export function HouseDetailsView({
                 })()}
               </span>
             </div>
+            {activeProperty.welcomeGuideUrl && (
+              <div className="flex items-center justify-between gap-3 pt-0.5">
+                <span className="text-light-secondary shrink-0">Welcome Guide</span>
+                <a
+                  href={activeProperty.welcomeGuideUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-code text-[12px] text-property-a underline truncate"
+                >
+                  {activeProperty.welcomeGuideUrl}
+                </a>
+              </div>
+            )}
           </div>
         </section>
 

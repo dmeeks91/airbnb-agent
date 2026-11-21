@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileText,
+  Link2,
   Sparkles,
   StickyNote,
   Upload,
@@ -36,6 +37,7 @@ const SOURCE_TABS: readonly {
 }[] = [
   { type: 'paste_text', label: 'Paste Text' },
   { type: 'pdf_upload', label: 'PDF Upload' },
+  { type: 'url_import', label: 'Guide URL' },
 ];
 
 export function ImportKnowledgeView({
@@ -48,6 +50,7 @@ export function ImportKnowledgeView({
   const [sourceType, setSourceType] = useState<KnowledgeSourceType>('paste_text');
   const [sourceTitle, setSourceTitle] = useState('');
   const [pastedText, setPastedText] = useState('');
+  const [guideUrl, setGuideUrl] = useState(property.welcomeGuideUrl ?? '');
   const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
   const [candidates, setCandidates] = useState<ExtractedRuleCandidate[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -71,16 +74,23 @@ export function ImportKnowledgeView({
       sourceTitle.trim() ||
       (sourceType === 'pdf_upload'
         ? selectedPdf?.name ?? 'Uploaded Guidebook.pdf'
-        : 'Pasted Listing Notes');
+        : sourceType === 'url_import'
+          ? guideUrl.trim() || 'Guest Welcome Guide'
+          : 'Pasted Listing Notes');
 
     const textPayload = pastedText.trim();
+    const urlPayload = guideUrl.trim();
 
     if (sourceType === 'pdf_upload' && !selectedPdf) {
       setErrorMessage('Select a PDF guidebook or house manual first.');
       return;
     }
-    if (sourceType !== 'pdf_upload' && !textPayload) {
-      setErrorMessage('Enter listing text or a quick note to extract rules.');
+    if (sourceType === 'url_import' && !urlPayload) {
+      setErrorMessage('Enter an https:// Welcome Guide URL first.');
+      return;
+    }
+    if (sourceType === 'paste_text' && !textPayload) {
+      setErrorMessage('Enter listing text or host notes to extract rules.');
       return;
     }
 
@@ -95,6 +105,7 @@ export function ImportKnowledgeView({
             sourceType,
             sourceTitle: resolvedTitle,
             textContent: textPayload,
+            sourceUrl: sourceType === 'url_import' ? urlPayload : undefined,
             file: selectedPdf ?? undefined,
           });
           extracted = response.candidates;
@@ -105,8 +116,19 @@ export function ImportKnowledgeView({
             setErrorMessage(error.message);
             return;
           }
+          if (sourceType === 'url_import') {
+            setCandidates([]);
+            setSelectedIds(new Set());
+            setErrorMessage('Could not reach the backend URL parser. Check your connection and try again.');
+            return;
+          }
           // Graceful local extraction fallback if server is temporarily unavailable
         }
+      } else if (sourceType === 'url_import') {
+        setCandidates([]);
+        setSelectedIds(new Set());
+        setErrorMessage('Live Welcome Guide URL fetching requires the backend API.');
+        return;
       }
 
       if (extracted.length === 0) {
@@ -170,7 +192,9 @@ export function ImportKnowledgeView({
       sourceTitle.trim() ||
       (sourceType === 'pdf_upload'
         ? selectedPdf?.name ?? 'Uploaded Guidebook.pdf'
-        : 'Pasted Listing Notes');
+        : sourceType === 'url_import'
+          ? guideUrl.trim() || 'Guest Welcome Guide'
+          : 'Pasted Listing Notes');
 
     await onMerge(resolvedTitle, sourceType, approved);
   };
@@ -246,6 +270,9 @@ export function ImportKnowledgeView({
                   {tab.type === 'pdf_upload' && (
                     <FileText className="w-4 h-4" aria-hidden="true" />
                   )}
+                  {tab.type === 'url_import' && (
+                    <Link2 className="w-4 h-4" aria-hidden="true" />
+                  )}
                   <span>{tab.label}</span>
                 </button>
               );
@@ -316,6 +343,36 @@ export function ImportKnowledgeView({
                   <span className="font-code text-[11px] shrink-0">Ready</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {sourceType === 'url_import' && (
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="font-label text-label-sm font-semibold text-light-secondary uppercase tracking-wider">
+                  Source Label (Optional)
+                </span>
+                <input
+                  type="text"
+                  value={sourceTitle}
+                  onChange={(event) => setSourceTitle(event.target.value)}
+                  placeholder="e.g. Guest Welcome Guide"
+                  className="min-h-[40px] px-3 py-2 bg-white border border-light-outline-variant rounded-md text-body-md text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-light-primary"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="font-label text-label-sm font-semibold text-light-secondary uppercase tracking-wider">
+                  Welcome Guide URL
+                </span>
+                <input
+                  type="url"
+                  value={guideUrl}
+                  onChange={(event) => setGuideUrl(event.target.value)}
+                  placeholder="https://example.web.app/welcome-guide"
+                  className="min-h-[42px] px-3 py-2 bg-white border border-light-outline-variant rounded-md font-code text-body-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-light-primary"
+                />
+              </label>
             </div>
           )}
 

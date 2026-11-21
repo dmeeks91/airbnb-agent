@@ -406,6 +406,19 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
       body: binaryPdfForm,
     });
     expect(binaryPdfRes.status).toBe(503);
+
+    // SSRF guard: reject localhost / non-https URLs on url_import
+    const badUrlRes = await fetch(`${baseUrl}/api/knowledge/extract`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        propertyId: 'prop-coastal-loft',
+        sourceType: 'url_import',
+        sourceTitle: 'Localhost Guide',
+        sourceUrl: 'http://127.0.0.1:8080/guide',
+      }),
+    });
+    expect(badUrlRes.status).toBe(400);
   });
 
   it('handles /api/internal/gmail-push (monotonic BigInt cursor + 404 fallback) and /api/internal/renew-watch (success + failure push alert)', async () => {

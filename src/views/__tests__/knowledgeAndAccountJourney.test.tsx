@@ -83,9 +83,10 @@ describe('Stage 3: House Details, Rule Details Sheet, Import Knowledge & Account
     await user.click(screen.getByRole('button', { name: 'Import' }));
     expect(document.body.contains(screen.getByText('Import House Details'))).toBe(true);
 
-    // Verify only the V1 tabs exist (Paste Text and PDF Upload)
+    // Verify only the V1 tabs exist (Paste Text, PDF Upload, Guide URL)
     expect(document.body.contains(screen.getByRole('tab', { name: 'Paste Text' }))).toBe(true);
     expect(document.body.contains(screen.getByRole('tab', { name: 'PDF Upload' }))).toBe(true);
+    expect(document.body.contains(screen.getByRole('tab', { name: 'Guide URL' }))).toBe(true);
     expect(screen.queryByRole('tab', { name: 'One-Liner' })).toBeNull();
     expect(screen.queryByText(/Airbnb Link/i)).toBeNull();
 
@@ -255,6 +256,10 @@ describe('Stage 3: House Details, Rule Details Sheet, Import Knowledge & Account
       within(secondDialog).getByLabelText('Airbnb Listing Title (Optional)'),
       'Harbor Retreat, Heated Pool & Dock',
     );
+    await user.type(
+      within(secondDialog).getByLabelText(/Guest Welcome Guide URL/i),
+      'https://example.web.app/harbor',
+    );
     await user.click(within(secondDialog).getByRole('button', { name: 'Save Property' }));
 
     await waitFor(() => {
@@ -265,10 +270,12 @@ describe('Stage 3: House Details, Rule Details Sheet, Import Knowledge & Account
     expect(secondProperty.accentColor).toBe('#8C4A00');
     expect(secondProperty.airbnbListingIds).toEqual(['22334455']);
     expect(secondProperty.titleAliases).toEqual(['Harbor Retreat, Heated Pool & Dock']);
+    expect(secondProperty.welcomeGuideUrl).toBe('https://example.web.app/harbor');
 
     // Edit listing match from House Details while preserving existing tax/host fee
     await user.click(screen.getByRole('button', { name: 'House Details' }));
     expect(document.body.contains(screen.getByText('Airbnb Listing Match'))).toBe(true);
+    expect(document.body.contains(screen.getByText('https://example.web.app/harbor'))).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Edit Listing' }));
 
     const editDialog = screen.getByRole('dialog', { name: 'Edit Property' });

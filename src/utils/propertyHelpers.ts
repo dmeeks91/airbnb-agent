@@ -191,6 +191,22 @@ export function mergeListingId(
   return [...existingIds, cleaned];
 }
 
+export function normalizeWelcomeGuideUrl(raw: string | null | undefined): string | null {
+  const trimmed = raw?.trim() ?? '';
+  if (!trimmed) {
+    return null;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function findPropertyById(
   properties: readonly Property[],
   propertyId: string,

@@ -1,8 +1,11 @@
-import { AlertTriangle, Check, Home } from 'lucide-react';
+import { AlertTriangle, Check, Home, Link2 } from 'lucide-react';
 import { useMemo, useState, type FormEvent } from 'react';
 import type { UpsertPropertyInput } from '../services/cohostStore.ts';
 import type { Property } from '../types/cohost.ts';
-import { parseAirbnbListingInput } from '../utils/propertyHelpers.ts';
+import {
+  normalizeWelcomeGuideUrl,
+  parseAirbnbListingInput,
+} from '../utils/propertyHelpers.ts';
 import { BottomSheet } from './ui/BottomSheet.tsx';
 
 export interface PropertyDetailsSheetProps {
@@ -26,6 +29,7 @@ function PropertyFormBody({
     property ? property.airbnbListingIds.join(', ') : '',
   );
   const [listingTitle, setListingTitle] = useState(property?.titleAliases[0] ?? '');
+  const [welcomeGuideUrl, setWelcomeGuideUrl] = useState(property?.welcomeGuideUrl ?? '');
   const [minNightlyPayout, setMinNightlyPayout] = useState(
     property ? String(property.pricing.nightlyFloor) : '175',
   );
@@ -49,6 +53,13 @@ function PropertyFormBody({
       return;
     }
 
+    const trimmedGuideUrl = welcomeGuideUrl.trim();
+    const normalizedGuideUrl = normalizeWelcomeGuideUrl(trimmedGuideUrl);
+    if (trimmedGuideUrl && !normalizedGuideUrl) {
+      setSaveError('Enter a valid https:// Welcome Guide URL or leave it blank.');
+      return;
+    }
+
     const parsedPayout = Number.parseFloat(minNightlyPayout);
     const parsedCleaning = Number.parseFloat(cleaningFee);
 
@@ -60,6 +71,7 @@ function PropertyFormBody({
         name: name.trim(),
         airbnbListingIds: parsedListing.listingIds,
         primaryListingTitle: listingTitle.trim() || null,
+        welcomeGuideUrl: normalizedGuideUrl,
         nightlyFloor: Math.max(0, Number.isFinite(parsedPayout) ? parsedPayout : 0),
         cleaningFee: Math.max(0, Number.isFinite(parsedCleaning) ? parsedCleaning : 0),
       });
@@ -160,6 +172,27 @@ function PropertyFormBody({
             Additional auto-learned titles: {extraLearnedTitles.join(' · ')}
           </span>
         )}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor="property-welcome-guide-url-input"
+          className="font-label text-label-sm uppercase tracking-wider text-light-secondary font-semibold flex items-center gap-1.5"
+        >
+          <Link2 className="w-3.5 h-3.5 text-property-a" aria-hidden="true" />
+          <span>Guest Welcome Guide URL (Optional)</span>
+        </label>
+        <input
+          id="property-welcome-guide-url-input"
+          type="url"
+          value={welcomeGuideUrl}
+          onChange={(event) => setWelcomeGuideUrl(event.target.value)}
+          placeholder="https://example.web.app/welcome-guide"
+          className="w-full min-h-[42px] bg-white border border-light-outline-variant rounded-md px-3 py-2 font-code text-body-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-light-primary focus:ring-2 focus:ring-light-primary/20"
+        />
+        <span className="text-[11px] text-light-secondary">
+          Suggested by the AI for confirmed guests (never sent on unconfirmed inquiries).
+        </span>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">

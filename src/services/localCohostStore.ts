@@ -22,6 +22,7 @@ import {
   buildPropertySlugId,
   mergeListingId,
   mergeListingTitleAlias,
+  normalizeWelcomeGuideUrl,
   pickNextPropertySlot,
 } from '../utils/propertyHelpers.ts';
 
@@ -45,6 +46,7 @@ export interface UpsertPropertyInput {
   name: string;
   airbnbListingIds: string[];
   primaryListingTitle: string | null;
+  welcomeGuideUrl?: string | null;
   nightlyFloor: number;
   cleaningFee: number;
   localTaxPct?: number;
@@ -307,11 +309,17 @@ export class LocalCohostStore implements CohostStore {
         [existing.id]: nextThreadsForProperty,
       };
 
+      const nextWelcomeGuideUrl =
+        input.welcomeGuideUrl !== undefined
+          ? normalizeWelcomeGuideUrl(input.welcomeGuideUrl)
+          : (existing.welcomeGuideUrl ?? null);
+
       const updated: Property = {
         ...existing,
         name: trimmedName,
         airbnbListingIds: cleanedIds,
         titleAliases: nextAliases,
+        welcomeGuideUrl: nextWelcomeGuideUrl,
         pricing: nextPricing,
       };
 
@@ -344,6 +352,7 @@ export class LocalCohostStore implements CohostStore {
       airbnbListingIds: cleanedIds,
       titleAliases: cleanedPrimaryTitle ? [cleanedPrimaryTitle] : [],
       signOffOverride: null,
+      welcomeGuideUrl: normalizeWelcomeGuideUrl(input.welcomeGuideUrl),
       needsReplyCount: 0,
       flaggedCount: 0,
       pricing: {

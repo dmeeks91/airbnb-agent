@@ -392,6 +392,7 @@ describe('FirestoreCohostStore debounced coach session timer cancellation', () =
       name: 'Coastal Loft Renovated',
       airbnbListingIds: ['900000000000000001', '900000000000000099'],
       titleAliases: edited.titleAliases,
+      welcomeGuideUrl: null,
       pricing: edited.pricing,
     });
     expect(setDocMock.mock.calls[0]?.[2]).toEqual({ merge: true });

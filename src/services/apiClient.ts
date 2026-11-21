@@ -76,7 +76,9 @@ function parseExtractKnowledgeResponse(raw: unknown): ExtractKnowledgeResponse {
     throw new ApiClientError('Malformed knowledge extraction response', 500);
   }
   const sourceType: KnowledgeSourceType =
-    raw.sourceType === 'pdf_upload' || raw.sourceType === 'quick_note'
+    raw.sourceType === 'pdf_upload' ||
+    raw.sourceType === 'quick_note' ||
+    raw.sourceType === 'url_import'
       ? raw.sourceType
       : 'paste_text';
 
@@ -201,6 +203,7 @@ export async function requestKnowledgeExtraction(params: {
   sourceType: KnowledgeSourceType;
   sourceTitle: string;
   textContent?: string;
+  sourceUrl?: string;
   file?: File;
 }): Promise<ExtractKnowledgeResponse> {
   if (params.sourceType === 'pdf_upload' && params.file) {
@@ -230,6 +233,7 @@ export async function requestKnowledgeExtraction(params: {
       sourceType: params.sourceType,
       sourceTitle: params.sourceTitle,
       textContent: params.textContent ?? '',
+      sourceUrl: params.sourceUrl ?? '',
     },
     parseExtractKnowledgeResponse,
   );

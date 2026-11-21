@@ -471,6 +471,7 @@ export class FirestoreCohostStore extends LocalCohostStore {
             name: saved.name,
             airbnbListingIds: saved.airbnbListingIds,
             titleAliases: saved.titleAliases,
+            welcomeGuideUrl: saved.welcomeGuideUrl ?? null,
             pricing: saved.pricing,
           },
           { merge: true },

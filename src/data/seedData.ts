@@ -17,6 +17,7 @@ function buildSeedProperties(): Property[] {
       airbnbListingIds: ['900000000000000001'],
       titleAliases: ['Coastal Loft', 'Maple Loft | Getaway + Monthly Discount'],
       signOffOverride: null,
+      welcomeGuideUrl: null,
       needsReplyCount: 1,
       flaggedCount: 0,
       pricing: {
@@ -73,6 +74,7 @@ function buildSeedProperties(): Property[] {
       airbnbListingIds: ['900000000000000002'],
       titleAliases: ['Mountain Chalet', "3BR City Haven | Chef's Kitchen + Monthly Rates"],
       signOffOverride: 'Best, Jordan & Alex',
+      welcomeGuideUrl: null,
       needsReplyCount: 0,
       flaggedCount: 1,
       pricing: {

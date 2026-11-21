@@ -223,7 +223,9 @@ export function parseKnowledgeSources(value: unknown): KnowledgeSource[] {
       continue;
     }
     const type: KnowledgeSourceType =
-      item.type === 'pdf_upload' || item.type === 'quick_note' ? item.type : 'paste_text';
+      item.type === 'pdf_upload' || item.type === 'quick_note' || item.type === 'url_import'
+        ? item.type
+        : 'paste_text';
     sources.push({
       id: readString(item.id, `src-${sources.length + 1}`),
       title: readString(item.title),
@@ -249,6 +251,7 @@ export function parsePropertyDoc(
     airbnbListingIds: readStringArray(data.airbnbListingIds),
     titleAliases: readStringArray(data.titleAliases),
     signOffOverride: readNullableString(data.signOffOverride),
+    welcomeGuideUrl: readNullableString(data.welcomeGuideUrl),
     needsReplyCount: readNumber(data.needsReplyCount, 0),
     flaggedCount: readNumber(data.flaggedCount, 0),
     pricing: {

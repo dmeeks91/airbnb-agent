@@ -15,6 +15,7 @@ import {
   getServerRepository,
   type CohostServerRepository,
 } from '../services/serverRepository.ts';
+import { fetchWelcomeGuideText } from '../services/urlKnowledgeFetcher.ts';
 
 const pdfUpload = multer({
   storage: multer.memoryStorage(),
@@ -30,12 +31,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export interface KnowledgeRoutesDeps {
   repository?: CohostServerRepository;
   authMiddleware?: RequestHandler;
+  fetchUrlText?: typeof fetchWelcomeGuideText;
 }
 
 export function createKnowledgeRouter(deps: KnowledgeRoutesDeps = {}): Router {
   const router = Router();
   const resolveRepo = () => deps.repository ?? getServerRepository();
   const auth = deps.authMiddleware ?? requireHostAuth;
+  const resolveUrlText = deps.fetchUrlText ?? fetchWelcomeGuideText;
 
   router.post(
     '/knowledge/extract',
@@ -51,11 +54,15 @@ export function createKnowledgeRouter(deps: KnowledgeRoutesDeps = {}): Router {
           typeof fields.propertyId === 'string' ? fields.propertyId.trim() : '';
         const rawSourceType = fields.sourceType;
         const sourceType: KnowledgeSourceType =
-          rawSourceType === 'pdf_upload' || rawSourceType === 'quick_note'
+          rawSourceType === 'pdf_upload' ||
+          rawSourceType === 'quick_note' ||
+          rawSourceType === 'url_import'
             ? rawSourceType
             : 'paste_text';
-        const textContent =
+        let textContent =
           typeof fields.textContent === 'string' ? fields.textContent.trim() : '';
+        const sourceUrl =
+          typeof fields.sourceUrl === 'string' ? fields.sourceUrl.trim() : '';
         const uploadedFile = req.file;
 
         if (!propertyId) {
@@ -73,6 +80,20 @@ export function createKnowledgeRouter(deps: KnowledgeRoutesDeps = {}): Router {
             uploadedFile.originalname.toLowerCase().endsWith('.pdf');
           if (!isPdf) {
             res.status(400).json({ error: 'Only PDF files are supported in V1' });
+            return;
+          }
+        } else if (sourceType === 'url_import') {
+          if (!sourceUrl) {
+            res.status(400).json({ error: 'sourceUrl is required' });
+            return;
+          }
+          try {
+            const fetched = await resolveUrlText(sourceUrl);
+            textContent = fetched.textContent;
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : 'Could not fetch Welcome Guide URL';
+            res.status(400).json({ error: message });
             return;
           }
         } else if (!textContent) {

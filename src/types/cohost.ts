@@ -107,7 +107,7 @@ export interface PropertyVendor {
   notes: string;
 }
 
-export type KnowledgeSourceType = 'paste_text' | 'pdf_upload' | 'quick_note';
+export type KnowledgeSourceType = 'paste_text' | 'pdf_upload' | 'quick_note' | 'url_import';
 
 export interface KnowledgeSource {
   id: string;
@@ -125,6 +125,7 @@ export interface Property {
   airbnbListingIds: string[];
   titleAliases: string[];
   signOffOverride: string | null;
+  welcomeGuideUrl?: string | null;
   needsReplyCount: number;
   flaggedCount: number;
   pricing: PropertyPricing;
