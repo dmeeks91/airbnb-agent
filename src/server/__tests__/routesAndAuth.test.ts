@@ -357,6 +357,39 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
     });
     expect(dismissRes.status).toBe(200);
 
+    // Delete thread endpoint validates propertyId, removes thread + messages, and returns 404 on repeat
+    const missingPropDelete = await fetch(`${baseUrl}/api/threads/thread-sarah`, {
+      method: 'DELETE',
+    });
+    expect(missingPropDelete.status).toBe(400);
+
+    const deleteThreadRes = await fetch(
+      `${baseUrl}/api/threads/thread-sarah?propertyId=prop-mountain-chalet`,
+      { method: 'DELETE' },
+    );
+    expect(deleteThreadRes.status).toBe(200);
+    expect(await repo.getThread('prop-mountain-chalet', 'thread-sarah')).toBeNull();
+
+    const deleteMissingThread = await fetch(
+      `${baseUrl}/api/threads/thread-sarah?propertyId=prop-mountain-chalet`,
+      { method: 'DELETE' },
+    );
+    expect(deleteMissingThread.status).toBe(404);
+
+    // Delete unmatched email endpoint removes item permanently and returns 404 when already removed
+    const deleteUnmatchedRes = await fetch(`${baseUrl}/api/unmatched/${unmatched.id}`, {
+      method: 'DELETE',
+    });
+    expect(deleteUnmatchedRes.status).toBe(200);
+    expect(
+      repo.getSnapshot().unmatchedEmails.some((item) => item.id === unmatched.id),
+    ).toBe(false);
+
+    const deleteMissingUnmatched = await fetch(`${baseUrl}/api/unmatched/${unmatched.id}`, {
+      method: 'DELETE',
+    });
+    expect(deleteMissingUnmatched.status).toBe(404);
+
     // Binary %PDF- header without Vertex AI must fail cleanly (503) instead of parsing PDF syntax into fake rules
     const binaryPdfForm = new FormData();
     binaryPdfForm.append('propertyId', 'prop-coastal-loft');

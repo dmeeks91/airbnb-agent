@@ -7,11 +7,13 @@ import {
   MessageSquareText,
   SlidersHorizontal,
   Sparkles,
+  Trash2,
   X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { PropertySwitcher } from '../components/PropertySwitcher.tsx';
 import { SearchInput } from '../components/ui/SearchInput.tsx';
+import { SelectPopover, type SelectOption } from '../components/ui/SelectPopover.tsx';
 import type {
   GuestStage,
   GuestThread,
@@ -40,7 +42,10 @@ export interface MessagesViewProps {
   onOpenThread: (threadId: string) => void;
   onDismissThread: (threadId: string) => Promise<void>;
   onAssignUnmatched: (unmatchedId: string, propertyId: string) => Promise<void>;
+  onDeleteUnmatched: (unmatchedId: string) => Promise<void>;
 }
+
+const DELETE_UNMATCHED_OPTION_VALUE = '__delete_unmatched__';
 
 const STATUS_OPTIONS: readonly { value: StatusFilter; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -70,6 +75,7 @@ export function MessagesView({
   onOpenThread,
   onDismissThread,
   onAssignUnmatched,
+  onDeleteUnmatched,
 }: MessagesViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -139,6 +145,24 @@ export function MessagesView({
   );
   const showUnmatchedBanner =
     unresolvedUnmatched.length > 0 && dismissedUnmatchedKey !== unmatchedKey;
+
+  const unmatchedActionOptions = useMemo<SelectOption<string>[]>(
+    () => [
+      ...properties.map((property) => ({
+        value: property.id,
+        label: property.name,
+        swatchColor: property.accentColor,
+      })),
+      {
+        value: DELETE_UNMATCHED_OPTION_VALUE,
+        label: 'Delete message',
+        tone: 'danger',
+        dividerBefore: properties.length > 0,
+        icon: <Trash2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />,
+      },
+    ],
+    [properties],
+  );
 
   const resetFilters = () => {
     setSearchTerm('');
@@ -297,7 +321,7 @@ export function MessagesView({
                     {unresolvedUnmatched.length === 1 ? 'Message' : 'Messages'}
                   </h2>
                   <p className="text-body-sm text-amber-950">
-                    Auto-draft paused until you assign the property.
+                    Assign to a property or delete non-guest notices.
                   </p>
                 </div>
               </div>
@@ -325,26 +349,21 @@ export function MessagesView({
                       &ldquo;{item.bodyPreview}&rdquo;
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] font-label text-slate-600">Assign to:</span>
-                    {properties.map((property) => {
-                      const propTheme = getPropertyTheme(property.code);
-                      return (
-                        <button
-                          key={property.id}
-                          type="button"
-                          onClick={() => void onAssignUnmatched(item.id, property.id)}
-                          className="min-h-[34px] px-2.5 py-1 rounded-md bg-stone-50 hover:bg-stone-100 border border-light-outline-variant text-label-sm font-semibold text-slate-900 flex items-center gap-1.5 transition"
-                        >
-                          <span
-                            className={`w-2 h-2 rounded-full ${propTheme.dotBg}`}
-                            aria-hidden="true"
-                          />
-                          <span>{property.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <SelectPopover
+                    value=""
+                    options={unmatchedActionOptions}
+                    placeholder="Assign or delete..."
+                    label={`Assign or delete ${item.subject}`}
+                    anchorMode="anchored"
+                    compact
+                    onChange={(selectedValue) => {
+                      if (selectedValue === DELETE_UNMATCHED_OPTION_VALUE) {
+                        void onDeleteUnmatched(item.id);
+                      } else if (selectedValue) {
+                        void onAssignUnmatched(item.id, selectedValue);
+                      }
+                    }}
+                  />
                 </div>
               ))}
             </div>

@@ -9,7 +9,7 @@ import type {
   UnmatchedEmail,
 } from '../../types/cohost.ts';
 import { detectDiscountAlert } from './discountDetector.ts';
-import { parseAirbnbEmail } from './emailParser.ts';
+import { parseAirbnbEmailHybrid } from './emailParserFallback.ts';
 import { computeMessageFingerprint } from './messageFingerprint.ts';
 import { matchProperty } from './propertyMatcher.ts';
 import { mergeListingId, mergeListingTitleAlias } from '../../utils/propertyHelpers.ts';
@@ -136,6 +136,28 @@ function normalizeStayDates(stayDates: string | null): string {
   for (const [full, abbr] of Object.entries(MONTH_CANON)) {
     normalized = normalized.replace(new RegExp(`\\b${full}\\b`, 'g'), abbr);
   }
+
+  // Canonicalize day-first international formats ("19-22 nov 2026", "31 oct-2 nov 2026")
+  // to month-first ("nov 19-22 2026", "oct 31-nov 2 2026") so US and UK threads merge cleanly.
+  const monthAbbr = '(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)';
+  const dayFirstSameMonth = normalized.match(
+    new RegExp(`^(\\d{1,2})-(\\d{1,2})\\s+(${monthAbbr})(?:\\s+(\\d{4}))?$`),
+  );
+  if (dayFirstSameMonth) {
+    const [, startDay, endDay, month, year] = dayFirstSameMonth;
+    return year ? `${month} ${startDay}-${endDay} ${year}` : `${month} ${startDay}-${endDay}`;
+  }
+
+  const dayFirstCrossMonth = normalized.match(
+    new RegExp(`^(\\d{1,2})\\s+(${monthAbbr})-(\\d{1,2})\\s+(${monthAbbr})(?:\\s+(\\d{4}))?$`),
+  );
+  if (dayFirstCrossMonth) {
+    const [, startDay, startMonth, endDay, endMonth, year] = dayFirstCrossMonth;
+    return year
+      ? `${startMonth} ${startDay}-${endMonth} ${endDay} ${year}`
+      : `${startMonth} ${startDay}-${endMonth} ${endDay}`;
+  }
+
   return normalized;
 }
 
@@ -258,7 +280,7 @@ export class IngestionService {
       };
     }
 
-    const parsed = await parseAirbnbEmail(rawEmail, { gmailMessageId });
+    const parsed = await parseAirbnbEmailHybrid(rawEmail, { gmailMessageId });
     return this.processParsedEmail(parsed, options);
   }
 

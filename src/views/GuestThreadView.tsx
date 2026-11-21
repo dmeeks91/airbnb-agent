@@ -4,6 +4,7 @@ import {
   ChevronUp,
   Plus,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { BottomSheet } from '../components/ui/BottomSheet.tsx';
@@ -19,6 +20,7 @@ export interface GuestThreadViewProps {
   onBack: () => void;
   onOpenDialogue: () => void;
   onLogManualReply: (replyText: string) => Promise<void>;
+  onDeleteThread: () => Promise<void>;
 }
 
 export function GuestThreadView({
@@ -29,11 +31,14 @@ export function GuestThreadView({
   onBack,
   onOpenDialogue,
   onLogManualReply,
+  onDeleteThread,
 }: GuestThreadViewProps) {
   const [expandedNotesMessageId, setExpandedNotesMessageId] = useState<string | null>(null);
   const [isManualReplyOpen, setIsManualReplyOpen] = useState(false);
   const [manualReplyText, setManualReplyText] = useState('');
   const [isSavingManual, setIsSavingManual] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeletingThread, setIsDeletingThread] = useState(false);
 
   const theme = getPropertyTheme(property.code);
   const hasActiveDraft = Boolean(thread.activeCoachSession?.turns.length);
@@ -54,26 +59,50 @@ export function GuestThreadView({
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (isDeletingThread) {
+      return;
+    }
+    setIsDeletingThread(true);
+    try {
+      await onDeleteThread();
+      setIsDeleteConfirmOpen(false);
+    } finally {
+      setIsDeletingThread(false);
+    }
+  };
+
   return (
     <div className="flex flex-col flex-1 pb-32">
-      <header className="px-4 py-3 border-b border-light-outline-variant bg-light-surface sticky top-0 z-20 flex items-center gap-2.5">
+      <header className="px-4 py-3 border-b border-light-outline-variant bg-light-surface sticky top-0 z-20 flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label={returnTarget === 'dialogue' ? 'Back to Agent Dialogue' : 'Back to Messages'}
+            className="w-9 h-9 rounded-full bg-light-surface-container-low border border-light-outline-variant flex items-center justify-center text-light-on-surface hover:bg-light-surface-container transition shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="font-headline text-headline-sm text-light-on-surface leading-tight truncate">
+              {thread.guestName}
+              {thread.stayDates ? ` (${thread.stayDates})` : ''}
+            </h1>
+            <p className={`text-body-sm font-label font-semibold truncate ${theme.text}`}>
+              {property.name} · Full Guest Thread
+            </p>
+          </div>
+        </div>
+
         <button
           type="button"
-          onClick={onBack}
-          aria-label={returnTarget === 'dialogue' ? 'Back to Agent Dialogue' : 'Back to Messages'}
-          className="w-9 h-9 rounded-full bg-light-surface-container-low border border-light-outline-variant flex items-center justify-center text-light-on-surface hover:bg-light-surface-container transition shrink-0"
+          onClick={() => setIsDeleteConfirmOpen(true)}
+          aria-label="Delete thread"
+          className="w-9 h-9 rounded-full bg-white border border-light-outline-variant flex items-center justify-center text-light-secondary hover:text-red-700 hover:border-red-300 hover:bg-red-50 transition shrink-0"
         >
-          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          <Trash2 className="w-4 h-4" aria-hidden="true" />
         </button>
-        <div className="min-w-0">
-          <h1 className="font-headline text-headline-sm text-light-on-surface leading-tight truncate">
-            {thread.guestName}
-            {thread.stayDates ? ` (${thread.stayDates})` : ''}
-          </h1>
-          <p className={`text-body-sm font-label font-semibold truncate ${theme.text}`}>
-            {property.name} · Full Guest Thread
-          </p>
-        </div>
       </header>
 
       <main className="px-4 py-3.5 flex flex-col gap-3.5 flex-1">
@@ -210,6 +239,41 @@ export function GuestThreadView({
             </button>
           </div>
         </form>
+      </BottomSheet>
+
+      <BottomSheet
+        isOpen={isDeleteConfirmOpen}
+        title="Delete this thread?"
+        subtitle={`Removes ${thread.guestName} (${messages.length} ${messages.length === 1 ? 'message' : 'messages'}) from Guest Co-Host permanently.`}
+        onClose={() => {
+          if (!isDeletingThread) {
+            setIsDeleteConfirmOpen(false);
+          }
+        }}
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-body-md text-light-secondary">
+            Nothing is deleted or changed on Airbnb, and previously processed emails in this thread will not be re-added on future syncs.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={isDeletingThread}
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              className="flex-1 min-h-[42px] rounded-md border border-light-outline-variant bg-white font-label text-label-md font-semibold text-light-secondary hover:bg-stone-50 disabled:opacity-40 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isDeletingThread}
+              onClick={() => void handleConfirmDelete()}
+              className="flex-1 min-h-[42px] rounded-md bg-red-700 hover:bg-red-800 text-white font-label text-label-md font-semibold disabled:opacity-40 transition"
+            >
+              {isDeletingThread ? 'Deleting...' : 'Delete Thread'}
+            </button>
+          </div>
+        </div>
       </BottomSheet>
     </div>
   );

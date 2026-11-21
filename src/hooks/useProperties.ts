@@ -1,6 +1,9 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import type { CohostStore, UpsertPropertyInput } from '../services/cohostStore.ts';
-import { requestAssignUnmatched } from '../services/apiClient.ts';
+import {
+  requestAssignUnmatched,
+  requestDeleteUnmatched,
+} from '../services/apiClient.ts';
 import type { Property } from '../types/cohost.ts';
 import {
   findPropertyById,
@@ -55,6 +58,22 @@ export function useProperties(store: CohostStore, activePropertyId: string) {
     [store],
   );
 
+  const deleteUnmatched = useCallback(
+    async (unmatchedId: string): Promise<void> => {
+      if (store.mode === 'firestore') {
+        try {
+          await requestDeleteUnmatched(unmatchedId);
+          return;
+        } catch {
+          await store.deleteUnmatchedEmail(unmatchedId);
+          return;
+        }
+      }
+      await store.deleteUnmatchedEmail(unmatchedId);
+    },
+    [store],
+  );
+
   return {
     properties: snapshot.properties,
     activeProperty,
@@ -66,5 +85,6 @@ export function useProperties(store: CohostStore, activePropertyId: string) {
     allowedEmails: snapshot.allowedEmails,
     saveProperty,
     assignUnmatched,
+    deleteUnmatched,
   };
 }

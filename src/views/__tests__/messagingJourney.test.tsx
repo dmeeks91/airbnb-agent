@@ -125,26 +125,49 @@ describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Threa
     expect(store.getSnapshot().voiceProfile.learnedDiffs.length).toBe(initialDiffCount + 1);
   });
 
-  it('dismisses a thread via Already handled without logging a voice diff, and assigns unmatched emails in one tap', async () => {
+  it('dismisses a thread via Already handled without logging a voice diff, and assigns or deletes unmatched emails via anchored dropdown', async () => {
     const user = userEvent.setup();
     const seed = createSeedSnapshot();
     const unmatched = createSampleUnmatchedEmail();
+    const junkUnmatched = {
+      ...createSampleUnmatchedEmail(),
+      id: 'unmatched-junk-2',
+      guestName: 'Unknown Guest',
+      subject: 'Your co-host invitation was sent',
+      bodyPreview: 'We sent your invitation to co-host.',
+    };
     const store = createLocalCohostStore({
       ...seed,
-      unmatchedEmails: [unmatched],
+      unmatchedEmails: [unmatched, junkUnmatched],
     });
     const initialDiffCount = store.getSnapshot().voiceProfile.learnedDiffs.length;
 
     render(<App store={store} />);
 
-    // Conditional unmatched banner is visible because 1 unmatched email exists
+    // Conditional unmatched banner is visible with 2 items
     const unmatchedSection = screen.getByRole('region', {
       name: 'Unmatched incoming emails',
     });
     expect(document.body.contains(unmatchedSection)).toBe(true);
 
-    // Assign Devon P. to Coastal Loft in one tap
-    await user.click(screen.getByRole('button', { name: 'Coastal Loft' }));
+    // Delete the junk unmatched notice via the anchored dropdown menu
+    await user.click(
+      screen.getByRole('button', { name: 'Assign or delete Your co-host invitation was sent' }),
+    );
+    await user.click(screen.getByRole('option', { name: 'Delete message' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Your co-host invitation was sent/)).toBeNull();
+    });
+    expect(
+      store.getSnapshot().unmatchedEmails.some((item) => item.id === 'unmatched-junk-2'),
+    ).toBe(false);
+
+    // Assign Devon P. to Coastal Loft via the anchored dropdown menu
+    await user.click(
+      screen.getByRole('button', { name: `Assign or delete ${unmatched.subject}` }),
+    );
+    await user.click(screen.getByRole('option', { name: 'Coastal Loft' }));
 
     await waitFor(() => {
       expect(
@@ -158,6 +181,33 @@ describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Threa
     await user.click(dismissButtons[0]);
 
     expect(store.getSnapshot().voiceProfile.learnedDiffs.length).toBe(initialDiffCount);
+  });
+
+  it('deletes a thread permanently from Full Guest Thread via confirmation sheet and updates unread counts', async () => {
+    const user = userEvent.setup();
+    const store = createLocalCohostStore();
+    render(<App store={store} />);
+
+    // Open Julian T. handled thread directly
+    await user.click(screen.getByText('Julian T. (Nov 15 - 19)'));
+    expect(
+      document.body.contains(screen.getByText(/Coastal Loft · Full Guest Thread/)),
+    ).toBe(true);
+
+    // Tap header delete icon -> confirm in BottomSheet
+    await user.click(screen.getByRole('button', { name: 'Delete thread' }));
+    expect(document.body.contains(screen.getByText('Delete this thread?'))).toBe(true);
+    await user.click(screen.getByRole('button', { name: 'Delete Thread' }));
+
+    // Returns to Messages and thread is gone from UI and store
+    await waitFor(() => {
+      expect(screen.queryByText('Julian T. (Nov 15 - 19)')).toBeNull();
+    });
+    expect(
+      (store.getSnapshot().threads['prop-coastal-loft'] ?? []).some(
+        (t) => t.id === 'thread-julian',
+      ),
+    ).toBe(false);
   });
 
   it('logs a manual reply from Guest Thread and shows new-message refresh banner without overwriting edits', async () => {

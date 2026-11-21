@@ -57,7 +57,9 @@ export interface CohostServerRepository extends IngestionStorageAdapter {
     options: MarkSentOptions,
   ): Promise<void>;
   dismissThread(propertyId: string, threadId: string): Promise<void>;
+  deleteThread(propertyId: string, threadId: string): Promise<boolean>;
   assignUnmatchedEmail(unmatchedId: string, propertyId: string): Promise<GuestThread | null>;
+  deleteUnmatchedEmail(unmatchedId: string): Promise<boolean>;
   getIngestionState(): Promise<IngestionStateDoc>;
   updateIngestionState(partial: Partial<IngestionStateDoc>): Promise<void>;
   updateIngestionHealth(partial: Partial<IngestionHealth>): Promise<void>;
@@ -238,6 +240,15 @@ export class InMemoryServerRepository implements CohostServerRepository {
     await this.store.dismissThread(propertyId, threadId);
   }
 
+  public async deleteThread(propertyId: string, threadId: string): Promise<boolean> {
+    const existing = await this.getThread(propertyId, threadId);
+    if (!existing) {
+      return false;
+    }
+    await this.store.deleteThread(propertyId, threadId);
+    return true;
+  }
+
   public async assignUnmatchedEmail(
     unmatchedId: string,
     propertyId: string,
@@ -273,6 +284,15 @@ export class InMemoryServerRepository implements CohostServerRepository {
       return this.getThread(propertyId, outcome.threadId);
     }
     return null;
+  }
+
+  public async deleteUnmatchedEmail(unmatchedId: string): Promise<boolean> {
+    const exists = this.store.getSnapshot().unmatchedEmails.some((item) => item.id === unmatchedId);
+    if (!exists) {
+      return false;
+    }
+    await this.store.deleteUnmatchedEmail(unmatchedId);
+    return true;
   }
 
   public async getIngestionState(): Promise<IngestionStateDoc> {
@@ -650,6 +670,37 @@ class FirestoreServerRepository implements CohostServerRepository {
     await this.recomputePropertyCounters(propertyId);
   }
 
+  public async deleteThread(propertyId: string, threadId: string): Promise<boolean> {
+    const admin = getFirebaseAdminServices();
+    if (!admin) {
+      return this.fallback.deleteThread(propertyId, threadId);
+    }
+
+    const threadRef = admin.db.doc(`properties/${propertyId}/threads/${threadId}`);
+    const threadSnap = await threadRef.get();
+    if (!threadSnap.exists) {
+      return false;
+    }
+
+    const messagesSnap = await admin.db
+      .collection(`properties/${propertyId}/threads/${threadId}/messages`)
+      .get();
+
+    const messageRefs = messagesSnap.docs.map((docSnap) => docSnap.ref);
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < messageRefs.length; i += CHUNK_SIZE) {
+      const batch = admin.db.batch();
+      for (const ref of messageRefs.slice(i, i + CHUNK_SIZE)) {
+        batch.delete(ref);
+      }
+      await batch.commit();
+    }
+
+    await threadRef.delete();
+    await this.recomputePropertyCounters(propertyId);
+    return true;
+  }
+
   public async assignUnmatchedEmail(
     unmatchedId: string,
     propertyId: string,
@@ -692,6 +743,20 @@ class FirestoreServerRepository implements CohostServerRepository {
       return this.getThread(propertyId, outcome.threadId);
     }
     return null;
+  }
+
+  public async deleteUnmatchedEmail(unmatchedId: string): Promise<boolean> {
+    const admin = getFirebaseAdminServices();
+    if (!admin) {
+      return this.fallback.deleteUnmatchedEmail(unmatchedId);
+    }
+    const docRef = admin.db.doc(`unmatchedEmails/${unmatchedId}`);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      return false;
+    }
+    await docRef.delete();
+    return true;
   }
 
   public async getIngestionState(): Promise<IngestionStateDoc> {

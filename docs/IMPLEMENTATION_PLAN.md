@@ -10,9 +10,9 @@ Guest Co-Host is a mobile-first Android PWA for managing Airbnb guest messaging 
 * **Single-property active view & in-app property management:** Messages displays one active property at a time with a clean color dot and property name (no `Property A / B / C` prefixes). The top-right property switcher shows an unread count badge when another property has messages waiting and includes an `Add Property` footer action. When no properties exist yet, the empty state opens `Add Property` directly in the app.
 * **Streamlined Add / Edit Property & listing auto-learning:** `PropertyDetailsSheet` (accessible from the empty state, the Property Switcher, and the Airbnb Listing Match section in House Details) collects `Property Name`, `Airbnb Listing URL or ID`, optional single-string `Airbnb Listing Title` (never split on commas), `Min Nightly Payout ($)`, and `Cleaning Fee ($)`. Pasting a `/rooms/<ID>`, `/rooms/plus/<ID>`, `/hosting/listings/editor/<ID>`, or `/manage-your-space/<ID>` URL extracts the numeric listing ID live (warning if a `/h/` or `abnb.me` short share link hides the ID). New properties auto-assign the next accent color (Teal, Ochre, Rose, cycling) and default to `14%` local tax and `15.5%` host fee, both editable anytime in House Details. Whenever an email matches a property or is manually assigned from the unmatched banner, backend ingestion automatically learns any newly seen numeric listing ID or full listing title onto that property.
 * **Compact search bar + embedded Filter popover** (Status + Guest Stage) directly under the header, sorting Needs Reply and flagged threads to the top with Sent threads collapsed to two lines below.
-* **Conditional unmatched fallback:** No permanent unassigned card in the default queue. If all property matchers fail on an incoming email, the backend routes it to an unmatched queue, refuses to auto-draft, sends an alert, and surfaces a dismissible banner only while unmatched items exist so you can assign the property in one tap.
+* **Conditional unmatched fallback:** No permanent unassigned card in the default queue. If all property matchers fail on an incoming email, the backend routes it to an unmatched queue, refuses to auto-draft, sends an alert, and surfaces a dismissible banner only while unmatched items exist so you can assign a property or permanently delete non-guest notices from a single anchored action dropdown (`Assign or delete...`).
 * **Single primary responder:** No claim/release locks or backup escalation emails. Your husband can sign in with shared access via the flat Google Sign-In allowlist (`config/access.allowedEmails`).
-* **Direct-to-dialogue navigation:** Tapping a Needs Reply card opens Agent Dialogue directly. Tapping View thread (or any Sent card) opens the full-screen Guest Thread view with a manual reply logger at the bottom.
+* **Direct-to-dialogue navigation & thread deletion:** Tapping a Needs Reply card opens Agent Dialogue directly. Tapping View thread (or any Sent card) opens the full-screen Guest Thread view with a manual reply logger at the bottom and a top-right trash button (backed by a confirmation bottom sheet) to permanently delete junk or orphan threads from Guest Co-Host without affecting Airbnb.
 * **Quick dismiss & automatic co-host reply sync:** Needs Reply cards and Agent Dialogue include an "Already handled on Airbnb" dismiss action that clears the queue without logging an unused AI draft into tone-memory diffs. When an Airbnb message digest ends with a Host or Co-host message (for example, a co-host replying inside Airbnb, or your own native Airbnb reply forwarded via your husband's co-host inbox), ingestion logs all messages in order into Guest Thread and automatically marks the thread as answered without firing a push notification.
 * **Per-property host context:** Properties support an optional primary-host/co-host sign-off override so co-hosted listings keep sign-offs consistent when guests address the primary host by name.
 * **On-demand Turn 1 drafting:** Background email ingestion parses, matches, checks for discount triggers, saves to Firestore, and fires the Android push immediately. Turn 1 drafts generate lazily when you open Agent Dialogue so drafts always use the latest house rules, group rapid-fire guest bursts cleanly, and avoid wasted calls on threads answered natively in Airbnb.
@@ -175,9 +175,9 @@ airbnb-agent/
     └── server/
         ├── routes/
         │   ├── index.ts                    # Central /api router
-        │   ├── coachRoutes.ts              # POST /api/coach/turn, /api/threads/:id/sent, /dismiss
+        │   ├── coachRoutes.ts              # POST /api/coach/turn, /threads/:id/sent, /dismiss, DELETE /threads/:id
         │   ├── knowledgeRoutes.ts          # POST /api/knowledge/extract (paste + PDF + one-liner)
-        │   ├── unmatchedRoutes.ts          # POST /api/unmatched/:id/assign
+        │   ├── unmatchedRoutes.ts          # POST /api/unmatched/:id/assign, DELETE /api/unmatched/:id
         │   └── internalRoutes.ts           # POST /api/internal/gmail-push, /renew-watch, /backfill (OIDC)
         ├── middleware/
         │   ├── requireHostAuth.ts          # Firebase ID token + email_verified + allowlist check
@@ -186,7 +186,8 @@ airbnb-agent/
         │   ├── firebaseAdmin.ts            # Firestore + Auth + Messaging Admin SDK init
         │   └── vertex.ts                   # Vertex AI (@google/genai) client + structured schemas
         ├── services/
-        │   ├── emailParser.ts              # [Stage 0 DONE] RFC 822 MIME + 4 Airbnb templates + noise filter
+        │   ├── emailParser.ts              # Deterministic RFC 822 MIME + international Airbnb templates + noise filter
+        │   ├── emailParserFallback.ts      # Narrow Vertex AI fallback for unrecognized Airbnb templates (fail-safe stage)
         │   ├── propertyMatcher.ts          # [Stage 0 DONE] Thread ID -> Listing ID -> Title alias matching
         │   ├── payoutMath.ts               # [Stage 0 DONE] 15.5% host-only fee (all-in & room-only modes)
         │   ├── discountDetector.ts         # [Stage 0 DONE] Deterministic price/offer & intent extraction

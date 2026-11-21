@@ -52,5 +52,23 @@ export function createUnmatchedRouter(deps: UnmatchedRoutesDeps = {}): Router {
     }
   });
 
+  router.delete('/unmatched/:id', auth, async (req: HostAuthRequest, res) => {
+    try {
+      const repo = resolveRepo();
+      const unmatchedId = req.params.id;
+      const deleted = await repo.deleteUnmatchedEmail(unmatchedId);
+      if (!deleted) {
+        res.status(404).json({ error: 'Unmatched email not found' });
+        return;
+      }
+
+      res.json({ ok: true });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to delete unmatched email';
+      res.status(500).json({ error: message });
+    }
+  });
+
   return router;
 }

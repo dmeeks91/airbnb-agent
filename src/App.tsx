@@ -187,6 +187,7 @@ export function App({
     userProfile,
     allowedEmails,
     assignUnmatched,
+    deleteUnmatched,
     saveProperty,
   } = useProperties(activeStore, selectedPropertyId);
 
@@ -200,6 +201,7 @@ export function App({
     updateDraftInSession,
     markAsSent,
     dismissAsHandled,
+    deleteThread,
   } = useThreads(activeStore, effectivePropertyId);
 
   const {
@@ -398,6 +400,7 @@ export function App({
                 await assignUnmatched(unmatchedId, targetPropertyId);
                 setSelectedPropertyId(targetPropertyId);
               }}
+              onDeleteUnmatched={deleteUnmatched}
             />
           )}
 
@@ -445,6 +448,11 @@ export function App({
                   finalText: replyText,
                   loggedManually: true,
                 });
+              }}
+              onDeleteThread={async () => {
+                await deleteThread(effectivePropertyId, activeThread.id);
+                setActiveThreadId(null);
+                setActiveView('messages');
               }}
             />
           )}

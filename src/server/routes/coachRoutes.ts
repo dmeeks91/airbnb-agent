@@ -194,5 +194,30 @@ export function createCoachRouter(deps: CoachRoutesDeps = {}): Router {
     }
   });
 
+  router.delete('/threads/:id', auth, async (req: HostAuthRequest, res) => {
+    try {
+      const repo = resolveRepo();
+      const threadId = req.params.id;
+      const rawPropertyId = req.query.propertyId;
+      const propertyId = typeof rawPropertyId === 'string' ? rawPropertyId.trim() : '';
+
+      if (!propertyId) {
+        res.status(400).json({ error: 'propertyId query parameter is required' });
+        return;
+      }
+
+      const deleted = await repo.deleteThread(propertyId, threadId);
+      if (!deleted) {
+        res.status(404).json({ error: 'Thread not found' });
+        return;
+      }
+
+      res.json({ ok: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete thread';
+      res.status(500).json({ error: message });
+    }
+  });
+
   return router;
 }

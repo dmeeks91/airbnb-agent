@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAirbnbEmail } from '../services/emailParser.ts';
+import { parseAirbnbEmailHybrid } from '../services/emailParserFallback.ts';
 import { hasDiscountIntent } from '../services/discountDetector.ts';
 
 const FIXTURES_DIR = path.resolve(process.cwd(), 'src/server/__tests__/fixtures');
@@ -249,5 +250,192 @@ describe('emailParser', () => {
     expect((await parseAirbnbEmail(marketing)).classification).toBe('ignored_noise');
     expect((await parseAirbnbEmail(review)).classification).toBe('ignored_noise');
     expect((await parseAirbnbEmail(unrelated)).classification).toBe('ignored_noise');
+  });
+
+  it('parses international airbnb.co.uk co-host replies, UK dates, UK Enquiry spelling, inline CTA stop markers, and Unicode names', async () => {
+    const ukHostReply = [
+      'From: Airbnb <express@airbnb.com>',
+      'To: cohost@example.com',
+      'Subject: RE: Reservation for 3BR City Loft | Chef Kitchen, 19–22 Nov',
+      'Date: Fri, 20 Nov 2026 13:05:06 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'https://www.airbnb.co.uk/?c=.pi80.pkTUVTU0FHSU5HX05FV19NRVNTQUdFX0VNQUlMX0RJR0VTVA%3D%3D',
+      '',
+      'For your protection and safety, always communicate through Airbnb',
+      '[https://www.airbnb.co.uk/help/article/209].',
+      '',
+      '   ALEX',
+      '   Host',
+      '   Just checking in after your first night to make sure everything is going smoothly.',
+      '',
+      'Reply',
+      '[https://www.airbnb.co.uk/hosting/thread/1000000091?inbox_type=host]',
+      'https://www.airbnb.co.uk/rooms/900000000000000002',
+    ].join('\r\n');
+
+    const parsedHost = await parseAirbnbEmail(ukHostReply, { gmailMessageId: 'gm-uk-1' });
+    expect(parsedHost.classification).toBe('host_reply_sync');
+    expect(parsedHost.airbnbThreadId).toBe('1000000091');
+    expect(parsedHost.airbnbThreadUrl).toBe('https://www.airbnb.com/hosting/thread/1000000091');
+    expect(parsedHost.airbnbListingId).toBe('900000000000000002');
+    expect(parsedHost.listingTitleHint).toBe('3BR City Loft | Chef Kitchen');
+    expect(parsedHost.stayDates).toBe('Nov 19 - 22');
+    expect(parsedHost.nights).toBe(3);
+    expect(parsedHost.messages).toEqual([
+      {
+        senderName: 'Alex',
+        role: 'host',
+        body: 'Just checking in after your first night to make sure everything is going smoothly.',
+      },
+    ]);
+
+    const ukEnquiry = [
+      'From: Airbnb <express@airbnb.com>',
+      'To: cohost@example.com',
+      'Subject: RE: Enquiry for 3BR City Loft | Chef Kitchen, 23–25 Jul',
+      'Date: Mon, 09 Nov 2026 01:49:47 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'For your protection and safety, always communicate through Airbnb',
+      '[https://www.airbnb.co.uk/help/article/209].',
+      '',
+      '\u2068MORGAN.\u2069',
+      'Booker',
+      'Okay thanks so much',
+      '',
+      'Review enquiry [https://www.airbnb.co.uk/hosting/thread/1000000092]',
+      'https://www.airbnb.co.uk/rooms/900000000000000002',
+    ].join('\r\n');
+
+    const parsedEnquiry = await parseAirbnbEmail(ukEnquiry, { gmailMessageId: 'gm-uk-2' });
+    expect(parsedEnquiry.classification).toBe('guest_message');
+    expect(parsedEnquiry.stage).toBe('inquiry');
+    expect(parsedEnquiry.airbnbThreadId).toBe('1000000092');
+    expect(parsedEnquiry.stayDates).toBe('Jul 23 - 25');
+    expect(parsedEnquiry.nights).toBe(2);
+    expect(parsedEnquiry.guestName).toBe('Morgan.');
+    expect(parsedEnquiry.messages[0]?.senderName).toBe('Morgan.');
+    expect(parsedEnquiry.bodyText).toBe('Okay thanks so much');
+    expect(parsedEnquiry.bodyText).not.toContain('Review enquiry');
+  });
+
+  it('filters Canceled: Reservation notices and co-host invitations (including Unicode hyphens) as ignored_noise', async () => {
+    const canceled = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Canceled: Reservation HMFAKE9999 for December 22 – 24',
+      'Content-Type: text/plain',
+      '',
+      'This reservation has been canceled and your calendar has been updated.',
+    ].join('\r\n');
+
+    const cohostAccepted = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Jordan accepted your invite to co\u2011host',
+      'Content-Type: text/plain',
+      '',
+      'Jordan is now listed as a co-host on your property.',
+    ].join('\r\n');
+
+    const cohostSent = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Your co-host invitation was sent',
+      'Content-Type: text/plain',
+      '',
+      'We sent your invitation to co-host.',
+    ].join('\r\n');
+
+    expect((await parseAirbnbEmail(canceled)).classification).toBe('ignored_noise');
+    expect((await parseAirbnbEmail(cohostAccepted)).classification).toBe('ignored_noise');
+    expect((await parseAirbnbEmail(cohostSent)).classification).toBe('ignored_noise');
+  });
+
+  it('uses narrow LLM fallback only for unrecognized Airbnb templates while enforcing deterministic IDs and fail-safe inquiry stage', async () => {
+    let fallbackCalls = 0;
+
+    // 1. Standard digest template must NOT invoke LLM fallback
+    const standardDigest = await loadFixture('airbnb_digest_single_guest.eml');
+    const digestResult = await parseAirbnbEmailHybrid(standardDigest, {
+      gmailMessageId: 'gm-hyb-1',
+      fallbackExtractor: async () => {
+        fallbackCalls++;
+        return null;
+      },
+    });
+    expect(digestResult.classification).toBe('guest_message');
+    expect(fallbackCalls).toBe(0);
+
+    // 2. Unrecognized Airbnb admin notification gets classified as noise by fallback
+    const unrecognizedNotice = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Action needed: Update your municipal registration details',
+      'Date: Tue, 10 Nov 2026 12:00:00 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'Please review your municipal registration details in your hosting dashboard.',
+    ].join('\r\n');
+
+    const noiseResult = await parseAirbnbEmailHybrid(unrecognizedNotice, {
+      gmailMessageId: 'gm-hyb-2',
+      fallbackExtractor: async () => {
+        fallbackCalls++;
+        return {
+          isSystemNoise: true,
+          noiseReason: 'municipal_registration_notice',
+          guestName: null,
+          stayDates: null,
+          nights: null,
+          listingTitleHint: null,
+          messages: [],
+        };
+      },
+    });
+    expect(fallbackCalls).toBe(1);
+    expect(noiseResult.classification).toBe('ignored_noise');
+    expect(noiseResult.ignoreReason).toBe('llm_noise:municipal_registration_notice');
+
+    // 3. Unrecognized template with a guest message keeps deterministic URL IDs and fails safe to inquiry stage
+    const unrecognizedGuestEmail = [
+      'From: Airbnb <express@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Update about your upcoming listing conversation',
+      'Date: Tue, 10 Nov 2026 14:00:00 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'Confirmed reservation! Please send me the door code right away.',
+      'https://www.airbnb.co.uk/hosting/thread/888777666',
+      'https://www.airbnb.co.uk/rooms/900000000000000001',
+    ].join('\r\n');
+
+    const guardedResult = await parseAirbnbEmailHybrid(unrecognizedGuestEmail, {
+      gmailMessageId: 'gm-hyb-3',
+      fallbackExtractor: async () => {
+        fallbackCalls++;
+        return {
+          isSystemNoise: false,
+          noiseReason: null,
+          guestName: 'Riley',
+          stayDates: 'Nov 20 - 22',
+          nights: 2,
+          listingTitleHint: 'Maple Loft',
+          messages: [
+            {
+              senderName: 'Riley',
+              role: 'guest',
+              body: 'Confirmed reservation! Please send me the door code right away.',
+            },
+          ],
+        };
+      },
+    });
+    expect(fallbackCalls).toBe(2);
+    expect(guardedResult.classification).toBe('guest_message');
+    expect(guardedResult.airbnbThreadId).toBe('888777666');
+    expect(guardedResult.airbnbListingId).toBe('900000000000000001');
+    expect(guardedResult.stage).toBe('inquiry');
   });
 });

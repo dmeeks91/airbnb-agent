@@ -162,6 +162,20 @@ export async function notifyThreadSent(
   );
 }
 
+async function deleteJson(path: string): Promise<{ ok: true }> {
+  const headers = await buildAuthHeaders();
+  const response = await fetch(path, {
+    method: 'DELETE',
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new ApiClientError(await parseErrorMessage(response), response.status);
+  }
+
+  return { ok: true };
+}
+
 export async function notifyThreadDismissed(
   threadId: string,
   payload: DismissThreadRequest,
@@ -170,6 +184,15 @@ export async function notifyThreadDismissed(
     `/api/threads/${encodeURIComponent(threadId)}/dismiss`,
     payload,
     () => ({ ok: true as const }),
+  );
+}
+
+export async function requestDeleteThread(
+  propertyId: string,
+  threadId: string,
+): Promise<{ ok: true }> {
+  return deleteJson(
+    `/api/threads/${encodeURIComponent(threadId)}?propertyId=${encodeURIComponent(propertyId)}`,
   );
 }
 
@@ -226,4 +249,8 @@ export async function requestAssignUnmatched(
       throw new ApiClientError('Malformed unmatched assignment response', 500);
     },
   );
+}
+
+export async function requestDeleteUnmatched(unmatchedId: string): Promise<{ ok: true }> {
+  return deleteJson(`/api/unmatched/${encodeURIComponent(unmatchedId)}`);
 }

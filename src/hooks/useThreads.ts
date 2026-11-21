@@ -3,6 +3,7 @@ import {
   notifyThreadDismissed,
   notifyThreadSent,
   requestCoachTurn,
+  requestDeleteThread,
 } from '../services/apiClient.ts';
 import type { CohostStore } from '../services/cohostStore.ts';
 import type { ActiveCoachSession, CoachTurn, GuestThread } from '../types/cohost.ts';
@@ -226,6 +227,21 @@ export function useThreads(store: CohostStore, propertyId: string) {
     [store, bumpThreadEpoch],
   );
 
+  const deleteThread = useCallback(
+    async (targetPropertyId: string, threadId: string): Promise<void> => {
+      bumpThreadEpoch(targetPropertyId, threadId);
+      await store.deleteThread(targetPropertyId, threadId);
+      if (store.mode === 'firestore') {
+        try {
+          await requestDeleteThread(targetPropertyId, threadId);
+        } catch {
+          // Handled gracefully by local persistence
+        }
+      }
+    },
+    [store, bumpThreadEpoch],
+  );
+
   return {
     threads,
     getThreadById,
@@ -234,5 +250,6 @@ export function useThreads(store: CohostStore, propertyId: string) {
     updateDraftInSession,
     markAsSent,
     dismissAsHandled,
+    deleteThread,
   };
 }

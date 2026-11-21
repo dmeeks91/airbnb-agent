@@ -6,13 +6,18 @@ import {
   type ParsedEmailMessage,
 } from '../../types/cohost.ts';
 
-const AIRBNB_DOMAIN_PATTERN = /(?:^|[@.])airbnb\.com$/i;
+const AIRBNB_HOST_PATTERN =
+  /^(?:[a-z0-9-]+\.)*airbnb\.(?:com|co\.[a-z]{2}|com\.[a-z]{2}|[a-z]{2,3})$/i;
 
-const NOISE_SENDER_PATTERN =
-  /^(?:discover|news|marketing|noreply-marketing|community)@(?:[a-z0-9-]+\.)*airbnb\.com$/i;
+const AIRBNB_DOMAIN_IN_URL = 'airbnb\\.(?:com|co\\.[a-z]{2}|com\\.[a-z]{2}|[a-z]{2,3})';
+
+const NOISE_SENDER_PATTERN = new RegExp(
+  `^(?:discover|news|marketing|noreply-marketing|community)@(?:[a-z0-9-]+\\.)*${AIRBNB_DOMAIN_IN_URL}$`,
+  'i',
+);
 
 const NOISE_TEMPLATE_PATTERNS: Array<{ reason: string; pattern: RegExp }> = [
-  { reason: 'inquiry_reminder', pattern: /inquiries\/reminder|INQUIRIES_REMINDER/i },
+  { reason: 'inquiry_reminder', pattern: /(?:in|en)quiries\/reminder|(?:IN|EN)QUIRIES_REMINDER/i },
   { reason: 'reservation_reminder', pattern: /ReservationHostReminder|HostReminder|reminder/i },
   { reason: 'payout_notice', pattern: /payout/i },
   { reason: 'review_reminder', pattern: /review/i },
@@ -37,12 +42,41 @@ const NOISE_SUBJECT_PATTERNS: Array<{ reason: string; pattern: RegExp }> = [
     reason: 'reservation_reminder',
     pattern: /\b(reservation reminder|calendar reminder|check-in reminder|upcoming check-in|is coming soon|get ready for .+['’]s arrival|reminder: review)\b/i,
   },
+  {
+    reason: 'cohost_admin_notice',
+    pattern: /\b(co-?host invitation|invite to co-?host|invited you to co-?host|accepted your invite to co-?host|removed you as a co-?host|co-?host permissions)\b/i,
+  },
 ];
 
 const GUEST_MESSAGE_SUBJECT_PATTERNS: RegExp[] = [
-  /\b(new message|message from|re:\s*(?:inquiry|pre-?approval|special\s+offer|reservation|booking|message|stay|request))\b/i,
-  /\b(inquiry (?:for|from|about)|pre-?approval (?:for|at)|reservation request|booking request|request to book|sent you a message)\b/i,
+  /\b(new message|message from|re:\s*(?:(?:in|en)quiry|pre-?approval|special\s+offer|reservation|booking|message|stay|request))\b/i,
+  /\b((?:in|en)quiry (?:for|from|about)|pre-?approval (?:for|at)|reservation request|booking request|request to book|sent you a message)\b/i,
 ];
+
+function isAirbnbEmailAddress(address: string): boolean {
+  const trimmed = address.trim().toLowerCase();
+  const atIndex = trimmed.lastIndexOf('@');
+  if (atIndex === -1) {
+    return false;
+  }
+  const domain = trimmed.slice(atIndex + 1);
+  return AIRBNB_HOST_PATTERN.test(domain);
+}
+
+function parseAirbnbUrlObject(rawUrl: string): URL | null {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return null;
+    }
+    if (!AIRBNB_HOST_PATTERN.test(parsed.hostname)) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 const GENERIC_BOILERPLATE_STOP_PATTERNS: RegExp[] = [
   /^\s*respond to .+ by replying directly to this email/i,
@@ -104,8 +138,9 @@ const MONTH_INDEX: Record<string, number> = {
 
 function normalizeInvisibleUnicode(input: string): string {
   return input
-    .replace(/\u200c|\u200b|\ufeff/g, '')
-    .replace(/[\u00a0\u2009\u200a\u202f]/g, ' ');
+    .replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, '')
+    .replace(/[\u00a0\u2009\u200a\u202f]/g, ' ')
+    .replace(/\u2011/g, '-');
 }
 
 function decodeHtmlEntities(input: string): string {
@@ -143,7 +178,7 @@ function htmlToPlainText(html: string): string {
 }
 
 function toTitleCaseName(raw: string): string {
-  const cleaned = raw.trim();
+  const cleaned = normalizeInvisibleUnicode(raw).trim();
   if (!cleaned) {
     return cleaned;
   }
@@ -179,7 +214,7 @@ function unwrapSoftWrappedParagraphs(lines: string[]): string {
 
 function extractAllAirbnbUrls(text: string, html: string): string[] {
   const urls = new Set<string>();
-  const urlRegex = /https?:\/\/(?:[a-z0-9-]+\.)*airbnb\.com\/[^\s"'<>)\]]+/gi;
+  const urlRegex = /https?:\/\/[^\s"'<>)\]]+/gi;
 
   for (const source of [html, text]) {
     if (!source) {
@@ -188,7 +223,9 @@ function extractAllAirbnbUrls(text: string, html: string): string[] {
     const matches = source.match(urlRegex) ?? [];
     for (const rawUrl of matches) {
       const cleaned = decodeHtmlEntities(rawUrl).replace(/[.,;!?]+$/, '');
-      urls.add(cleaned);
+      if (parseAirbnbUrlObject(cleaned)) {
+        urls.add(cleaned);
+      }
     }
   }
 
@@ -244,48 +281,69 @@ function extractThreadAndListingMeta(urls: string[]): {
   let airbnbThreadUrl: string | null = null;
   let airbnbListingId: string | null = null;
 
-  const threadPatterns: RegExp[] = [
-    /airbnb\.com\/hosting\/thread\/([a-zA-Z0-9_-]+)/i,
-    /airbnb\.com\/messaging\/thread\/([a-zA-Z0-9_-]+)/i,
-    /airbnb\.com\/hosting\/messages\/([a-zA-Z0-9_-]+)/i,
-    /airbnb\.com\/messaging\/qt_for_reservation\/([a-zA-Z0-9_-]+)/i,
-    /airbnb\.com\/z\/q\/([a-zA-Z0-9_-]+)/i,
-    /[?&](?:thread_id|message_thread_id)=([a-zA-Z0-9_-]+)/i,
+  const threadPathPatterns: RegExp[] = [
+    /^\/hosting\/thread\/([a-zA-Z0-9_-]+)/i,
+    /^\/messaging\/thread\/([a-zA-Z0-9_-]+)/i,
+    /^\/hosting\/messages\/([a-zA-Z0-9_-]+)/i,
+    /^\/messaging\/qt_for_reservation\/([a-zA-Z0-9_-]+)/i,
+    /^\/z\/q\/([a-zA-Z0-9_-]+)/i,
   ];
 
-  const reservationCodePattern = /airbnb\.com\/hosting\/reservations\/details\/([A-Z0-9]{6,16})/i;
+  const reservationPathPattern = /^\/hosting\/reservations\/details\/([A-Z0-9]{6,16})/i;
 
-  const listingPatterns: RegExp[] = [
-    /airbnb\.com\/rooms\/(\d+)/i,
-    /airbnb\.com\/hosting\/listings\/(?:editor\/)?(\d+)/i,
-    /[?&]listing_id=(\d+)/i,
+  const listingPathPatterns: RegExp[] = [
+    /^\/rooms\/(?:plus\/)?(\d+)/i,
+    /^\/hosting\/listings\/(?:editor\/)?(\d+)/i,
+    /^\/manage-your-space\/(\d+)/i,
   ];
 
-  for (const url of urls) {
+  for (const rawUrl of urls) {
+    const parsedUrl = parseAirbnbUrlObject(rawUrl);
+    if (!parsedUrl) {
+      continue;
+    }
+
     if (!airbnbThreadId) {
-      for (const pattern of threadPatterns) {
-        const match = url.match(pattern);
+      for (const pattern of threadPathPatterns) {
+        const match = parsedUrl.pathname.match(pattern);
         if (match) {
           airbnbThreadId = match[1];
-          airbnbThreadUrl = /\/z\/q\//i.test(url)
+          airbnbThreadUrl = /^\/z\/q\//i.test(parsedUrl.pathname)
             ? `https://www.airbnb.com/z/q/${match[1]}`
             : `https://www.airbnb.com/hosting/thread/${match[1]}`;
           break;
         }
       }
+      if (!airbnbThreadId) {
+        const queryThreadId =
+          parsedUrl.searchParams.get('thread_id') ??
+          parsedUrl.searchParams.get('message_thread_id');
+        if (queryThreadId && /^[a-zA-Z0-9_-]+$/.test(queryThreadId)) {
+          airbnbThreadId = queryThreadId;
+          airbnbThreadUrl = `https://www.airbnb.com/hosting/thread/${queryThreadId}`;
+        }
+      }
     }
+
     if (!reservationCode) {
-      const resMatch = url.match(reservationCodePattern);
+      const resMatch = parsedUrl.pathname.match(reservationPathPattern);
       if (resMatch) {
         reservationCode = resMatch[1].toUpperCase();
       }
     }
+
     if (!airbnbListingId) {
-      for (const pattern of listingPatterns) {
-        const match = url.match(pattern);
+      for (const pattern of listingPathPatterns) {
+        const match = parsedUrl.pathname.match(pattern);
         if (match) {
           airbnbListingId = match[1];
           break;
+        }
+      }
+      if (!airbnbListingId) {
+        const queryListingId = parsedUrl.searchParams.get('listing_id');
+        if (queryListingId && /^\d+$/.test(queryListingId)) {
+          airbnbListingId = queryListingId;
         }
       }
     }
@@ -296,11 +354,15 @@ function extractThreadAndListingMeta(urls: string[]): {
   }
 
   if (!airbnbThreadUrl) {
-    const fallback = urls.find((url) =>
-      /airbnb\.com\/(?:hosting\/(?:thread|messages|inbox|reservations)|messaging|z\/q|e\/)/i.test(
-        url,
-      ),
-    );
+    const fallback = urls.find((rawUrl) => {
+      const parsedUrl = parseAirbnbUrlObject(rawUrl);
+      return Boolean(
+        parsedUrl &&
+          /^\/(?:hosting\/(?:thread|messages|inbox|reservations)|messaging|z\/q|e\/)/i.test(
+            parsedUrl.pathname,
+          ),
+      );
+    });
     if (fallback) {
       airbnbThreadUrl = fallback;
     }
@@ -314,11 +376,16 @@ function extractThreadAndListingMeta(urls: string[]): {
  *   NAME
  *   Booker | Host
  *   Message paragraphs...
- * Stops at `Reply\n[https://www.airbnb.com/hosting/thread/...]`.
+ * Stops at `Reply` / `Review enquiry` / `Review inquiry` CTA links.
  */
 function extractDigestMessages(rawBody: string): ParsedEmailMessage[] | null {
-  const protectionIdx = rawBody.search(/For your protection and safety, always communicate through Airbnb/i);
-  const replyMarkerRegex = /\n\s*Reply\s*\n\s*\[https?:\/\/[^\]]*airbnb\.com\/hosting\/thread\//i;
+  const protectionIdx = rawBody.search(
+    /For your protection and safety, always communicate through Airbnb/i,
+  );
+  const replyMarkerRegex = new RegExp(
+    `(?:^|\\n)\\s*(?:Reply|Review\\s+(?:in|en)quiry|Respond|Pre-approve\\s*\\/\\s*Decline|View\\s+message)\\s+\\[https?:\\/\\/[^\\]]*${AIRBNB_DOMAIN_IN_URL}\\/(?:hosting\\/thread|messaging\\/|hosting\\/messages|hosting\\/reservations|z\\/q)`,
+    'i',
+  );
   const replyMatch = replyMarkerRegex.exec(rawBody);
 
   if (protectionIdx === -1 && !replyMatch) {
@@ -330,9 +397,10 @@ function extractDigestMessages(rawBody: string): ParsedEmailMessage[] | null {
     // Advance past the safety link line `[https://...].`
     const afterSafety = rawBody.slice(protectionIdx);
     const linkEndMatch = afterSafety.match(/\[https?:\/\/[^\]]+\]\.?\s*\n/);
-    startIdx = linkEndMatch && linkEndMatch.index !== undefined
-      ? protectionIdx + linkEndMatch.index + linkEndMatch[0].length
-      : protectionIdx;
+    startIdx =
+      linkEndMatch && linkEndMatch.index !== undefined
+        ? protectionIdx + linkEndMatch.index + linkEndMatch[0].length
+        : protectionIdx;
   }
 
   const endIdx = replyMatch ? replyMatch.index : rawBody.length;
@@ -342,6 +410,10 @@ function extractDigestMessages(rawBody: string): ParsedEmailMessage[] | null {
 
   const zone = rawBody.slice(startIdx, endIdx);
   const lines = zone.replace(/\r\n/g, '\n').split('\n');
+  const inlineCtaStopPattern = new RegExp(
+    `^(?:Reply|Review\\s+(?:in|en)quiry|Respond|Pre-approve\\s*\\/\\s*Decline|View\\s+message)\\s*\\[https?:\\/\\/[^\\]]*${AIRBNB_DOMAIN_IN_URL}\\/`,
+    'i',
+  );
 
   const messages: ParsedEmailMessage[] = [];
   let currentName: string | null = null;
@@ -373,6 +445,14 @@ function extractDigestMessages(rawBody: string): ParsedEmailMessage[] | null {
       continue;
     }
 
+    if (
+      inlineCtaStopPattern.test(trimmed) ||
+      /^You can also respond by replying directly to this email/i.test(trimmed) ||
+      /^Update your email preferences/i.test(trimmed)
+    ) {
+      break;
+    }
+
     // Look ahead for the next non-empty line to see if it is a role label ("Booker", "Host", etc.)
     let nextNonEmptyIdx = i + 1;
     while (nextNonEmptyIdx < lines.length && !lines[nextNonEmptyIdx].trim()) {
@@ -385,7 +465,9 @@ function extractDigestMessages(rawBody: string): ParsedEmailMessage[] | null {
       const looksLikeName =
         trimmed.length <= 50 &&
         !/^https?:\/\//i.test(trimmed) &&
-        !/[.!?]$/.test(trimmed);
+        !/\[https?:\/\//i.test(trimmed) &&
+        !/[!?]$/.test(trimmed) &&
+        (!trimmed.endsWith('.') || trimmed.split(/\s+/).length <= 3);
 
       if (detectedRole && looksLikeName) {
         flush();
@@ -408,15 +490,15 @@ function extractDigestMessages(rawBody: string): ParsedEmailMessage[] | null {
 /**
  * Parses Airbnb `host_initial_inquiry` and `reservation_host_pending` emails where
  * the guest profile block appears before the message and `Pre-approve / Decline`
- * or the listing URL `https://www.airbnb.com/rooms/...` terminates the message.
+ * or the listing URL `https://www.airbnb.<tld>/rooms/...` terminates the message.
  */
 function extractInquiryOrRequestMessage(
   rawBody: string,
   template: string | null,
 ): { guestName: string | null; messages: ParsedEmailMessage[] } | null {
-  const headerMatch = rawBody.match(/RESPOND\s+TO\s+(.+?)[’']S\s+(INQUIRY|REQUEST)/i);
+  const headerMatch = rawBody.match(/RESPOND\s+TO\s+(.+?)[’']S\s+(INQUIRY|ENQUIRY|REQUEST)/i);
   const isInquiryOrRequestTemplate = Boolean(
-    template && /(?:host_initial_inquiry|reservation_host_pending)/i.test(template),
+    template && /(?:host_initial_(?:in|en)quiry|reservation_host_pending)/i.test(template),
   );
 
   if (!headerMatch && !isInquiryOrRequestTemplate) {
@@ -439,27 +521,28 @@ function extractInquiryOrRequestMessage(
   const guestNameFromHeader = headerMatch ? toTitleCaseName(headerMatch[1]) : null;
   const lines = rawBody.replace(/\r\n/g, '\n').split('\n');
 
-  // Find the profile link line that sits right beneath the guest's name
-  // e.g. `[https://www.airbnb.com/hosting/thread/...]` or `[https://www.airbnb.com/hosting/reservations/details/...]`
-  // Note: Pending requests have two `Accept/Decline` CTA links first, THEN `<GuestName>` + `[https://...]`.
   let profileStartLine = -1;
   let guestName = guestNameFromHeader;
 
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
+    const bracketUrlMatch = trimmed.match(/^\[(https?:\/\/[^\]]+)\]$/i);
+    const bracketUrl = bracketUrlMatch ? parseAirbnbUrlObject(bracketUrlMatch[1]) : null;
     if (
-      /^\[https?:\/\/(?:www\.)?airbnb\.com\/hosting\/(?:thread|reservations\/details)\//i.test(
-        trimmed,
-      )
+      bracketUrl &&
+      /^\/hosting\/(?:thread|reservations\/details)\//i.test(bracketUrl.pathname)
     ) {
-      // Check preceding non-empty line
       let prev = i - 1;
       while (prev >= 0 && !lines[prev].trim()) {
         prev--;
       }
       if (prev >= 0) {
         const prevText = lines[prev].trim();
-        if (/^(?:Accept\s*\/\s*Decline|Pre-approve\s*\/\s*Decline|Reply)/i.test(prevText)) {
+        if (
+          /^(?:Accept\s*\/\s*Decline|Pre-approve\s*\/\s*Decline|Reply|Review\s+(?:in|en)quiry)/i.test(
+            prevText,
+          )
+        ) {
           continue;
         }
         if (prevText.length <= 50 && !/^https?:\/\//i.test(prevText)) {
@@ -480,10 +563,12 @@ function extractInquiryOrRequestMessage(
 
   for (let i = profileStartLine; i < lines.length; i++) {
     const trimmed = lines[i].trim();
+    const lineUrl = parseAirbnbUrlObject(trimmed);
 
     if (
       /^Pre-approve\s*\/\s*Decline/i.test(trimmed) ||
-      /^https?:\/\/(?:www\.)?airbnb\.com\/rooms\//i.test(trimmed) ||
+      /^Review\s+(?:in|en)quiry/i.test(trimmed) ||
+      (lineUrl !== null && /^\/rooms\//i.test(lineUrl.pathname)) ||
       /^YOU HAVE 24 HOURS TO RESPOND/i.test(trimmed) ||
       /^FREQUENTLY ASKED QUESTIONS/i.test(trimmed)
     ) {
@@ -497,7 +582,6 @@ function extractInquiryOrRequestMessage(
       continue;
     }
 
-    // Skip guest profile badge lines right below the name (verified, reviews, join year, "City, ST")
     if (!passedProfileMeta) {
       const isProfileMetaLine =
         /^Identity verified\b/i.test(trimmed) ||
@@ -543,14 +627,14 @@ function extractGuestNameFallback(
     }
   }
 
-  const respondMatch = rawBody.match(/RESPOND\s+TO\s+(.+?)[’']S\s+(?:INQUIRY|REQUEST)/i);
+  const respondMatch = rawBody.match(/RESPOND\s+TO\s+(.+?)[’']S\s+(?:INQUIRY|ENQUIRY|REQUEST)/i);
   if (respondMatch) {
     return toTitleCaseName(respondMatch[1]);
   }
 
   const subjectPatterns: RegExp[] = [
     /(?:new\s+)?message\s+from\s+([A-Z][a-zA-Z'’-]+(?:\s+[A-Z][a-zA-Z'’.-]+)?)/,
-    /inquiry\s+from\s+([A-Z][a-zA-Z'’-]+(?:\s+[A-Z][a-zA-Z'’.-]+)?)/i,
+    /(?:in|en)quiry\s+from\s+([A-Z][a-zA-Z'’-]+(?:\s+[A-Z][a-zA-Z'’.-]+)?)/i,
     /reservation\s+request\s+from\s+([A-Z][a-zA-Z'’-]+(?:\s+[A-Z][a-zA-Z'’.-]+)?)/i,
   ];
 
@@ -581,12 +665,12 @@ function extractListingTitleHint(subject: string, rawBody: string): string | nul
     '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)';
 
   const dateTailPattern = new RegExp(
-    `(?:,\\s*|\\s+for\\s+|\\s*[-–—|]\\s*)${monthToken}\\s+\\d{1,2}.*$`,
+    `(?:,\\s*|\\s+for\\s+|\\s*[-–—|]\\s*)(?:${monthToken}\\s+\\d{1,2}|\\d{1,2}\\s*(?:[-–—]\\s*\\d{1,2}\\s*)?${monthToken}).*$`,
     'i',
   );
 
   const subjectPatterns: RegExp[] = [
-    /^(?:re:\s*)?(?:pending:\s*)?(?:inquiry|pre-?approval|special\s+offer|reservation\s+request|reservation|booking\s+request|booking)\s+(?:for|at|about)\s+(.+)$/i,
+    /^(?:re:\s*)?(?:pending:\s*)?(?:(?:in|en)quiry|pre-?approval|special\s+offer|reservation\s+request|reservation|booking\s+request|booking)\s+(?:for|at|about)\s+(.+)$/i,
     /\bmessage\s+from\s+.+?\s+about\s+(.+)$/i,
   ];
 
@@ -664,6 +748,28 @@ function extractStayDatesAndNights(
     }
   }
 
+  // Pattern 0b: Day-first full dates on international Airbnb Check-in / Checkout card row:
+  // e.g. "19 November 2026   22 November 2026" or "19 Nov 2026   22 Nov 2026"
+  const dayFirstCardDates = combined.match(
+    /\b(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{4})\s{2,}(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{4})\b/i,
+  );
+  if (dayFirstCardDates) {
+    const startDay = Number.parseInt(dayFirstCardDates[1], 10);
+    const startMonth = MONTH_INDEX[dayFirstCardDates[2].toLowerCase()];
+    const startYear = Number.parseInt(dayFirstCardDates[3], 10);
+    const endDay = Number.parseInt(dayFirstCardDates[4], 10);
+    const endMonth = MONTH_INDEX[dayFirstCardDates[5].toLowerCase()];
+    const endYear = Number.parseInt(dayFirstCardDates[6], 10);
+    const nights = daysBetweenUtc(startYear, startMonth, startDay, endYear, endMonth, endDay);
+    if (nights) {
+      const sameMonth = startMonth === endMonth && startYear === endYear;
+      const stayDates = sameMonth
+        ? `${dayFirstCardDates[2]} ${startDay} - ${endDay}, ${endYear}`
+        : `${dayFirstCardDates[2]} ${startDay}, ${startYear} - ${dayFirstCardDates[5]} ${endDay}, ${endYear}`;
+      return { stayDates, nights };
+    }
+  }
+
   // Pattern 1: Cross-month range, e.g. "May 29 - Jun 2, 2026" or "Dec 30, 2026 - Jan 2, 2027"
   const crossMonth = combined.match(
     /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})(?:,\s*(\d{4}))?\s*[-–—to]+\s*(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})(?:,\s*(\d{4}))?\b/i,
@@ -686,6 +792,32 @@ function extractStayDatesAndNights(
     };
   }
 
+  // Pattern 1b: Day-first cross-month range, e.g. "31 Oct - 2 Nov, 2026" or "31 Oct – 2 Nov"
+  const dayFirstCrossMonth = combined.match(
+    /\b(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(?:\s+(\d{4}))?\s*[-–—]+\s*(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(?:,?\s*(\d{4}))?\b/i,
+  );
+  if (dayFirstCrossMonth) {
+    const startDay = Number.parseInt(dayFirstCrossMonth[1], 10);
+    const startMonth = MONTH_INDEX[dayFirstCrossMonth[2].toLowerCase()];
+    const endDay = Number.parseInt(dayFirstCrossMonth[4], 10);
+    const endMonth = MONTH_INDEX[dayFirstCrossMonth[5].toLowerCase()];
+    const endYear = dayFirstCrossMonth[6]
+      ? Number.parseInt(dayFirstCrossMonth[6], 10)
+      : fallbackYear;
+    const startYear = dayFirstCrossMonth[3]
+      ? Number.parseInt(dayFirstCrossMonth[3], 10)
+      : endMonth < startMonth
+        ? endYear - 1
+        : endYear;
+    const nights = daysBetweenUtc(startYear, startMonth, startDay, endYear, endMonth, endDay);
+    if (nights) {
+      const stayDates = dayFirstCrossMonth[6]
+        ? `${dayFirstCrossMonth[2]} ${startDay} - ${dayFirstCrossMonth[5]} ${endDay}, ${endYear}`
+        : `${dayFirstCrossMonth[2]} ${startDay} - ${dayFirstCrossMonth[5]} ${endDay}`;
+      return { stayDates, nights };
+    }
+  }
+
   // Pattern 2: Same-month range, e.g. "May 14 - 17, 2026" or "Aug 5 – 9"
   const sameMonth = combined.match(
     /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})\s*[-–—]\s*(\d{1,2})(?:,\s*(\d{4}))?\b/i,
@@ -702,6 +834,25 @@ function extractStayDatesAndNights(
     };
   }
 
+  // Pattern 2b: Day-first same-month range, e.g. "19–22 Nov" or "19 - 22 Nov, 2026"
+  const dayFirstSameMonth = combined.match(
+    /\b(\d{1,2})\s*[-–—]\s*(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(?:,?\s*(\d{4}))?\b/i,
+  );
+  if (dayFirstSameMonth) {
+    const startDay = Number.parseInt(dayFirstSameMonth[1], 10);
+    const endDay = Number.parseInt(dayFirstSameMonth[2], 10);
+    const monthName = dayFirstSameMonth[3];
+    const month = MONTH_INDEX[monthName.toLowerCase()];
+    const year = dayFirstSameMonth[4] ? Number.parseInt(dayFirstSameMonth[4], 10) : fallbackYear;
+    const nights = daysBetweenUtc(year, month, startDay, year, month, endDay);
+    if (nights) {
+      const stayDates = dayFirstSameMonth[4]
+        ? `${monthName} ${startDay} - ${endDay}, ${year}`
+        : `${monthName} ${startDay} - ${endDay}`;
+      return { stayDates, nights };
+    }
+  }
+
   const nightsOnly = combined.match(/\b(\d{1,2})\s+nights?\b/i);
   return {
     stayDates: null,
@@ -714,17 +865,17 @@ function inferGuestStage(
   template: string | null,
   rawBody: string,
 ): GuestStage {
-  if (template && /(?:inquiry|inquiries|pending)/i.test(template)) {
+  if (template && /(?:(?:in|en)quir(?:y|ies)|pending)/i.test(template)) {
     return 'inquiry';
   }
   if (
-    /\b(inquiry|pre-?approval|special\s+offer|pending:|reservation request|booking request|request to book)\b/i.test(
+    /\b((?:in|en)quiry|pre-?approval|special\s+offer|pending:|reservation request|booking request|request to book)\b/i.test(
       subject,
     )
   ) {
     return 'inquiry';
   }
-  if (/\b(pre-approve\s*\/\s*decline|accept\s*\/\s*decline)\b/i.test(rawBody)) {
+  if (/\b(pre-approve\s*\/\s*decline|accept\s*\/\s*decline|review\s+(?:in|en)quiry)\b/i.test(rawBody)) {
     return 'inquiry';
   }
   if (/\b(checked in|currently staying|check-out today|checking out today)\b/i.test(rawBody)) {
@@ -776,8 +927,8 @@ function checkStaticNoise(
   rawBody: string,
 ): string | null {
   const isAirbnbFrom =
-    AIRBNB_DOMAIN_PATTERN.test(fromAddress) ||
-    (replyToAddress ? AIRBNB_DOMAIN_PATTERN.test(replyToAddress) : false);
+    isAirbnbEmailAddress(fromAddress) ||
+    (replyToAddress ? isAirbnbEmailAddress(replyToAddress) : false);
 
   if (!isAirbnbFrom) {
     return 'non_airbnb_sender';
@@ -805,8 +956,12 @@ function checkStaticNoise(
     }
   }
 
+  const isSystemReservationSubject =
+    /\breservation\s+(?:confirmed|canceled|cancelled)\b/i.test(subject) ||
+    /^(?:re:\s*)?(?:canceled|cancelled):\s*reservation\b/i.test(subject);
+
   if (
-    /\breservation\s+(?:confirmed|canceled|cancelled)\b/i.test(subject) &&
+    isSystemReservationSubject &&
     !/\bsent\s+you\s+a\s+message\b/i.test(rawBody) &&
     !/\bmessage\s+from\b/i.test(rawBody) &&
     !/For your protection and safety, always communicate through Airbnb/i.test(rawBody)
@@ -817,15 +972,24 @@ function checkStaticNoise(
   return null;
 }
 
-export async function parseAirbnbEmail(
+export interface ParsedAirbnbEmailMeta {
+  parsed: ParsedAirbnbEmail;
+  isAirbnbSender: boolean;
+  matchedStructuredTemplate: boolean;
+  rawBody: string;
+}
+
+export async function parseAirbnbEmailWithMeta(
   rawEmail: string | Buffer | Uint8Array,
   options: { gmailMessageId?: string } = {},
-): Promise<ParsedAirbnbEmail> {
+): Promise<ParsedAirbnbEmailMeta> {
   const parser = new PostalMime();
   const email = await parser.parse(rawEmail);
 
   const fromAddress = (email.from?.address ?? '').trim().toLowerCase();
-  const fromName = email.from?.name?.trim() || null;
+  const fromName = email.from?.name
+    ? normalizeInvisibleUnicode(email.from.name).trim() || null
+    : null;
   const replyToAddress = email.replyTo?.[0]?.address?.trim().toLowerCase() || null;
   const subject = normalizeInvisibleUnicode((email.subject ?? '').trim());
   const sentAt = email.date ? new Date(email.date).toISOString() : new Date().toISOString();
@@ -835,6 +999,10 @@ export async function parseAirbnbEmail(
   const textPart = normalizeInvisibleUnicode((email.text ?? '').trim());
   const htmlPart = (email.html ?? '').trim();
   const rawBody = textPart || (htmlPart ? htmlToPlainText(htmlPart) : '');
+
+  const isAirbnbSender =
+    isAirbnbEmailAddress(fromAddress) ||
+    (replyToAddress ? isAirbnbEmailAddress(replyToAddress) : false);
 
   const allAirbnbUrls = extractAllAirbnbUrls(textPart, htmlPart);
   const airbnbTemplate = extractAirbnbTemplate(allAirbnbUrls);
@@ -857,15 +1025,18 @@ export async function parseAirbnbEmail(
   // Extract structured messages from known Airbnb templates first
   let messages: ParsedEmailMessage[] = [];
   let guestName: string | null = null;
+  let matchedStructuredTemplate = false;
 
   const digestMessages = extractDigestMessages(rawBody);
   if (digestMessages) {
+    matchedStructuredTemplate = true;
     messages = digestMessages;
     const firstGuest = digestMessages.find((m) => m.role === 'guest');
     guestName = firstGuest?.senderName ?? null;
   } else {
     const inquiryParsed = extractInquiryOrRequestMessage(rawBody, airbnbTemplate);
     if (inquiryParsed) {
+      matchedStructuredTemplate = true;
       guestName = inquiryParsed.guestName;
       messages = inquiryParsed.messages;
     }
@@ -929,7 +1100,7 @@ export async function parseAirbnbEmail(
     }
   }
 
-  return {
+  const parsed: ParsedAirbnbEmail = {
     gmailMessageId,
     rfcMessageId,
     fromAddress,
@@ -956,4 +1127,19 @@ export async function parseAirbnbEmail(
     airbnbListingId,
     listingTitleHint,
   };
+
+  return {
+    parsed,
+    isAirbnbSender,
+    matchedStructuredTemplate,
+    rawBody,
+  };
+}
+
+export async function parseAirbnbEmail(
+  rawEmail: string | Buffer | Uint8Array,
+  options: { gmailMessageId?: string } = {},
+): Promise<ParsedAirbnbEmail> {
+  const { parsed } = await parseAirbnbEmailWithMeta(rawEmail, options);
+  return parsed;
 }

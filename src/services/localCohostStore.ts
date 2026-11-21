@@ -90,7 +90,9 @@ export interface CohostStore {
     options: MarkSentOptions,
   ): Promise<void>;
   dismissThread(propertyId: string, threadId: string): Promise<void>;
+  deleteThread(propertyId: string, threadId: string): Promise<void>;
   assignUnmatchedEmail(unmatchedId: string, propertyId: string): Promise<GuestThread | null>;
+  deleteUnmatchedEmail(unmatchedId: string): Promise<void>;
   updateVoiceProfile(
     updates: Partial<Pick<VoiceProfile, 'styleRules' | 'signOffMode' | 'signOffText'>>,
   ): Promise<void>;
@@ -698,6 +700,29 @@ export class LocalCohostStore implements CohostStore {
     });
   }
 
+  public async deleteThread(propertyId: string, threadId: string): Promise<void> {
+    const existingThreads = this.snapshot.threads[propertyId] ?? [];
+    const nextThreadsForProperty = existingThreads.filter((thread) => thread.id !== threadId);
+    const nextThreadsMap = {
+      ...this.snapshot.threads,
+      [propertyId]: nextThreadsForProperty,
+    };
+
+    const nextMessages: Record<string, ThreadMessage[]> = {};
+    for (const [key, list] of Object.entries(this.snapshot.messages)) {
+      if (key !== threadId) {
+        nextMessages[key] = list;
+      }
+    }
+
+    this.commit({
+      ...this.snapshot,
+      properties: recomputePropertyCounts(this.snapshot.properties, nextThreadsMap),
+      threads: nextThreadsMap,
+      messages: nextMessages,
+    });
+  }
+
   public async assignUnmatchedEmail(
     unmatchedId: string,
     propertyId: string,
@@ -796,6 +821,13 @@ export class LocalCohostStore implements CohostStore {
     });
 
     return newThread;
+  }
+
+  public async deleteUnmatchedEmail(unmatchedId: string): Promise<void> {
+    this.commit({
+      ...this.snapshot,
+      unmatchedEmails: this.snapshot.unmatchedEmails.filter((item) => item.id !== unmatchedId),
+    });
   }
 
   public async updateVoiceProfile(

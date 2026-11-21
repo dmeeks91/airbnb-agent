@@ -666,6 +666,20 @@ export class FirestoreCohostStore extends LocalCohostStore {
     await super.dismissThread(propertyId, threadId);
   }
 
+  public override async deleteThread(propertyId: string, threadId: string): Promise<void> {
+    this.bumpCoachEpoch(propertyId, threadId);
+    this.cancelCoachTimer(propertyId, threadId);
+    await super.deleteThread(propertyId, threadId);
+  }
+
+  public override async deleteUnmatchedEmail(unmatchedId: string): Promise<void> {
+    await super.deleteUnmatchedEmail(unmatchedId);
+    const services = getFirebaseServices();
+    if (services) {
+      await deleteDoc(doc(services.db, 'unmatchedEmails', unmatchedId));
+    }
+  }
+
   public override async updateVoiceProfile(
     updates: Partial<Pick<VoiceProfile, 'styleRules' | 'signOffMode' | 'signOffText'>>,
   ): Promise<void> {

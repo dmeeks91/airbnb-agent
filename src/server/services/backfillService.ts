@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import PostalMime from 'postal-mime';
 import type { ParsedAirbnbEmail } from '../../types/cohost.ts';
-import { parseAirbnbEmail } from './emailParser.ts';
+import { parseAirbnbEmailHybrid } from './emailParserFallback.ts';
 import type { GmailSyncClient } from './gmailClient.ts';
 import { IngestionService, type IngestionPushAdapter } from './ingestionService.ts';
 import type { CohostServerRepository } from './serverRepository.ts';
@@ -92,7 +92,7 @@ export async function extractBackfillCandidates(
       if (attachmentBuffer.byteLength === 0) {
         continue;
       }
-      const parsedInner = await parseAirbnbEmail(attachmentBuffer);
+      const parsedInner = await parseAirbnbEmailHybrid(attachmentBuffer);
       const dedupeId = computeAttachmentDedupeId(parsedInner.rfcMessageId, attachmentBuffer);
       const parsedWithId: ParsedAirbnbEmail = {
         ...parsedInner,
@@ -109,7 +109,7 @@ export async function extractBackfillCandidates(
     return candidates;
   }
 
-  const parsedDirect = await parseAirbnbEmail(rawEmail, {
+  const parsedDirect = await parseAirbnbEmailHybrid(rawEmail, {
     gmailMessageId: sourceGmailMessageId,
   });
   const parsedTime = Date.parse(parsedDirect.sentAt);

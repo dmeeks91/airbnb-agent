@@ -442,4 +442,60 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
     expect(chalet?.airbnbListingIds).toContain('777888999');
     expect(chalet?.titleAliases).toContain('Brand New Cabin Title');
   });
+
+  it('merges a UK airbnb.co.uk co-host reply directly into an existing US airbnb.com guest thread and marks it sent', async () => {
+    const { repo, service, alerts } = createHarness();
+
+    const usGuestEmail = [
+      'From: Airbnb <express@airbnb.com>',
+      'To: host@example.com',
+      'Subject: RE: Reservation for Coastal Loft, Nov 19 - 22',
+      'Date: Wed, 18 Nov 2026 20:50:00 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'For your protection and safety, always communicate through Airbnb [https://www.airbnb.com/help].',
+      '',
+      'JAMIE',
+      'Booker',
+      'Thanks so much! Looking forward to it!',
+      '',
+      'Reply',
+      '[https://www.airbnb.com/hosting/thread/555111222]',
+      'https://www.airbnb.com/rooms/900000000000000001',
+    ].join('\r\n');
+
+    const ukCoHostReply = [
+      'From: Airbnb <express@airbnb.com>',
+      'To: cohost@example.com',
+      'Subject: RE: Reservation for Coastal Loft, 19–22 Nov',
+      'Date: Fri, 20 Nov 2026 13:05:06 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'For your protection and safety, always communicate through Airbnb [https://www.airbnb.co.uk/help].',
+      '',
+      'ALEX',
+      'Host',
+      'Just checking in after your first night to make sure everything is going well!',
+      '',
+      'Reply',
+      '[https://www.airbnb.co.uk/hosting/thread/555111222]',
+      'https://www.airbnb.co.uk/rooms/900000000000000001',
+    ].join('\r\n');
+
+    const first = await service.processRawEmail(usGuestEmail, 'gm-intl-1');
+    const second = await service.processRawEmail(ukCoHostReply, 'gm-intl-2');
+
+    expect(first.outcome).toBe('guest_message_ingested');
+    expect(second.outcome).toBe('host_reply_synced');
+    expect(alerts).toHaveLength(1);
+
+    const allThreads = await repo.listAllThreads();
+    expect(allThreads).toHaveLength(1);
+    expect(allThreads[0].guestName).toBe('Jamie');
+    expect(allThreads[0].status).toBe('sent');
+    expect(allThreads[0].unansweredCount).toBe(0);
+
+    const messages = await repo.listThreadMessages(allThreads[0].propertyId, allThreads[0].id);
+    expect(messages.map((m) => m.sender)).toEqual(['guest', 'host']);
+  });
 });
