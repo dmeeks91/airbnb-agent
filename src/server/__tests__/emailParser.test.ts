@@ -438,4 +438,115 @@ describe('emailParser', () => {
     expect(guardedResult.airbnbListingId).toBe('900000000000000001');
     expect(guardedResult.stage).toBe('inquiry');
   });
+
+  it('drops zero-message pending reservation requests instead of dumping raw template text, while handling wrapped URLs, reminders, and compact MIME dates', async () => {
+    const zeroMessagePending = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Pending: Reservation Request at 3BR City Loft | Chef Kitchen for Dec14–16, 2026',
+      'Date: Tue, 27 Oct 2026 01:01:50 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'https://www.airbnb.com/?c=.pi80.pkYm9va2luZy9yZXNlcnZhdGlvbl9ob3N0X3BlbmRpbmc%3D&euid=1111',
+      '',
+      'RESPOND TO TAYLOR’S REQUEST',
+      '',
+      'Accept/Decline',
+      '[https://www.airbnb.com/hosting/reservations/details/HMFAKE5555?',
+      'isPending=true&src_item=0&c=.pi80.pkYm9va2luZy9yZXNlcnZhdGlvbl9ob3N0X3BlbmRpbmc%3D]',
+      '',
+      'Taylor',
+      '',
+      '[https://www.airbnb.com/hosting/reservations/details/HMFAKE5555?',
+      'isPending=true&c=.pi80.pkYm9va2luZy9yZXNlcnZhdGlvbl9ob3N0X3BlbmRpbmc%3D]',
+      '',
+      'Identity verified · 1 review',
+      '',
+      'Richmond, VA',
+      '',
+      'https://www.airbnb.com/rooms/900000000000000002?c=.pi80.pkYm9va2luZy9yZXNlcnZhdGlvbl9ob3N0X3BlbmRpbmc%3D',
+      '',
+      '3BR CITY LOFT | CHEF KITCHEN',
+      'Entire home/apt',
+    ].join('\r\n');
+
+    let fallbackCalled = false;
+    const parsedEmpty = await parseAirbnbEmailHybrid(zeroMessagePending, {
+      gmailMessageId: 'gm-empty-pending',
+      fallbackExtractor: async () => {
+        fallbackCalled = true;
+        return null;
+      },
+    });
+    expect(parsedEmpty.classification).toBe('ignored_noise');
+    expect(parsedEmpty.ignoreReason).toBe('empty_message_body');
+    expect(parsedEmpty.messages).toHaveLength(0);
+    expect(parsedEmpty.bodyText).toBe('');
+    expect(parsedEmpty.stayDates).toBe('Dec 14 - 16, 2026');
+    expect(parsedEmpty.listingTitleHint).toBe('3BR City Loft | Chef Kitchen');
+    expect(fallbackCalled).toBe(false);
+
+    const wrappedUrlPendingWithMessage = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Pending: Reservation Request at 3BR City Loft | Chef Kitchen for Oct31–Nov 2, 2026',
+      'Date: Tue, 27 Oct 2026 02:00:00 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'RESPOND TO TAYLOR’S REQUEST',
+      '',
+      'Taylor',
+      '',
+      '[https://www.airbnb.com/hosting/reservations/details/HMFAKE5556?',
+      'isPending=true&c=.pi80.pkYm9va2luZy9yZXNlcnZhdGlvbl9ob3N0X3BlbmRpbmc%3D]',
+      '',
+      'Identity verified · 2 reviews',
+      'Richmond, VA',
+      '',
+      'Hi! Visiting family for the weekend, is street parking free?',
+      '',
+      'https://www.airbnb.com/rooms/900000000000000002',
+    ].join('\r\n');
+
+    const parsedWrapped = await parseAirbnbEmail(wrappedUrlPendingWithMessage, {
+      gmailMessageId: 'gm-wrapped-pending',
+    });
+    expect(parsedWrapped.classification).toBe('guest_message');
+    expect(parsedWrapped.stayDates).toBe('Oct 31 - Nov 2, 2026');
+    expect(parsedWrapped.nights).toBe(2);
+    expect(parsedWrapped.bodyText).toBe(
+      'Hi! Visiting family for the weekend, is street parking free?',
+    );
+
+    const reminderRequest = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Reminder: Reservation Request at 3BR City Loft for Dec14–16, 2026',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'You have 12 hours left to respond to this reservation request.',
+    ].join('\r\n');
+
+    const decisionReminder = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: When you’re ready, let Jordan know whatyou’ve decided about their inquiry.',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'Pre-approve or decline the inquiry.',
+    ].join('\r\n');
+
+    const hostingTip = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: A great price is key to getting booked',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'Try dynamic pricing tips in your calendar.',
+    ].join('\r\n');
+
+    expect((await parseAirbnbEmail(reminderRequest)).classification).toBe('ignored_noise');
+    expect((await parseAirbnbEmail(decisionReminder)).classification).toBe('ignored_noise');
+    expect((await parseAirbnbEmail(hostingTip)).classification).toBe('ignored_noise');
+  });
 });

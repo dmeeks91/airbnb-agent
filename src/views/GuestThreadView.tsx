@@ -105,7 +105,7 @@ export function GuestThreadView({
         </button>
       </header>
 
-      <main className="px-4 py-3.5 flex flex-col gap-3.5 flex-1">
+      <main className="px-4 py-3.5 flex flex-col gap-3.5 flex-1 min-w-0">
         <div className="text-center">
           <span className="inline-block px-3 py-1 rounded-full bg-light-surface-container text-light-secondary text-[11px] font-code">
             {thread.stage.toUpperCase()}
@@ -122,7 +122,7 @@ export function GuestThreadView({
           return (
             <div
               key={msg.id}
-              className={`flex flex-col gap-1 max-w-[88%] ${isHost ? 'self-end' : 'self-start'}`}
+              className={`flex flex-col gap-1 max-w-[88%] min-w-0 ${isHost ? 'self-end' : 'self-start'}`}
             >
               <div
                 className={`flex items-center gap-1.5 text-[11px] font-code text-light-secondary ${
@@ -136,7 +136,7 @@ export function GuestThreadView({
               </div>
 
               <div
-                className={`p-3 rounded-2xl text-body-md whitespace-pre-line ${
+                className={`p-3 rounded-2xl text-body-md whitespace-pre-line break-words [overflow-wrap:anywhere] ${
                   isHost
                     ? `${theme.bubbleBg} border ${theme.bubbleBorder} ${theme.bubbleText} rounded-tr-sm`
                     : msg.unanswered
@@ -148,7 +148,7 @@ export function GuestThreadView({
               </div>
 
               {hasNotes && (
-                <div className={isHost ? 'self-end' : 'self-start'}>
+                <div className={`min-w-0 ${isHost ? 'self-end' : 'self-start'}`}>
                   <button
                     type="button"
                     onClick={() =>
@@ -165,7 +165,7 @@ export function GuestThreadView({
                     )}
                   </button>
                   {isNotesExpanded && (
-                    <ul className="mt-1 p-2.5 rounded-md bg-stone-100 border border-light-outline-variant text-[12px] text-slate-700 flex flex-col gap-1">
+                    <ul className="mt-1 p-2.5 rounded-md bg-stone-100 border border-light-outline-variant text-[12px] text-slate-700 flex flex-col gap-1 break-words [overflow-wrap:anywhere]">
                       {msg.archivedCoachNotes.map((note, idx) => (
                         <li key={idx}>• {note}</li>
                       ))}

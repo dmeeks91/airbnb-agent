@@ -273,17 +273,17 @@ export function AgentDialogueView({
               unansweredBurst.map((msg) => (
                 <div
                   key={msg.id}
-                  className="bg-white border border-light-outline-variant rounded-xl rounded-tl-sm p-2.5 text-body-sm text-light-on-surface flex flex-col gap-1"
+                  className="bg-white border border-light-outline-variant rounded-xl rounded-tl-sm p-2.5 text-body-sm text-light-on-surface flex flex-col gap-1 min-w-0"
                 >
                   <div className="flex items-center justify-between text-[11px] font-code text-light-secondary">
                     <span className="font-medium text-light-on-surface">{msg.senderName}</span>
                     <span>{formatShortClock(msg.sentAt)}</span>
                   </div>
-                  <p>{msg.body}</p>
+                  <p className="break-words [overflow-wrap:anywhere]">{msg.body}</p>
                 </div>
               ))
             ) : (
-              <div className="bg-white border border-light-outline-variant rounded-xl rounded-tl-sm p-2.5 text-body-sm text-light-on-surface">
+              <div className="bg-white border border-light-outline-variant rounded-xl rounded-tl-sm p-2.5 text-body-sm text-light-on-surface break-words [overflow-wrap:anywhere]">
                 {thread.lastPreview}
               </div>
             )}
@@ -307,7 +307,7 @@ export function AgentDialogueView({
         </div>
       )}
 
-      <main className="px-4 py-4 flex flex-col gap-4 flex-1">
+      <main className="px-4 py-4 flex flex-col gap-4 flex-1 min-w-0">
         {draftError && (
           <div
             role="alert"
@@ -345,11 +345,11 @@ export function AgentDialogueView({
         {turns.map((turn, idx) => {
           if (turn.sender === 'host') {
             return (
-              <div key={turn.id} className="flex flex-col gap-1 max-w-[85%] self-end">
+              <div key={turn.id} className="flex flex-col gap-1 max-w-[85%] min-w-0 self-end">
                 <span className="text-[11px] font-code text-light-secondary text-right pr-1">
                   You · {formatShortClock(turn.createdAt)}
                 </span>
-                <div className="bg-light-primary text-white rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-body-md">
+                <div className="bg-light-primary text-white rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-body-md break-words [overflow-wrap:anywhere]">
                   {turn.text}
                 </div>
               </div>
@@ -360,7 +360,7 @@ export function AgentDialogueView({
           const isCopied = copiedTurnId === turn.id;
 
           return (
-            <div key={turn.id} className="flex flex-col gap-1.5 max-w-[96%]">
+            <div key={turn.id} className="flex flex-col gap-1.5 max-w-[96%] min-w-0">
               <div className="flex items-center gap-1.5 text-[11px] font-label font-semibold pl-1">
                 <span className={`w-2 h-2 rounded-full ${theme.dotBg}`} aria-hidden="true" />
                 <span className={theme.text}>Guest Co-Host Agent</span>
@@ -369,17 +369,21 @@ export function AgentDialogueView({
                 </span>
               </div>
 
-              <div className="p-3.5 rounded-2xl rounded-tl-sm bg-white border border-light-outline-variant flex flex-col gap-3">
-                <div className="flex flex-col gap-1">
-                  <p className="text-body-md text-light-on-surface">{turn.text}</p>
+              <div className="p-3.5 rounded-2xl rounded-tl-sm bg-white border border-light-outline-variant flex flex-col gap-3 min-w-0">
+                <div className="flex flex-col gap-1 min-w-0">
+                  <p className="text-body-md text-light-on-surface break-words [overflow-wrap:anywhere]">
+                    {turn.text}
+                  </p>
                   {turn.note && (
-                    <p className="text-body-sm text-light-secondary">{turn.note}</p>
+                    <p className="text-body-sm text-light-secondary break-words [overflow-wrap:anywhere]">
+                      {turn.note}
+                    </p>
                   )}
                 </div>
 
                 {turn.draft !== null && (
                   <div
-                    className={`p-3 rounded-lg border flex flex-col gap-2.5 ${theme.softBg} ${theme.softBorder}`}
+                    className={`p-3 rounded-lg border flex flex-col gap-2.5 min-w-0 ${theme.softBg} ${theme.softBorder}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className={`text-label-sm font-semibold uppercase tracking-wider ${theme.text}`}>
@@ -411,7 +415,7 @@ export function AgentDialogueView({
                         className="w-full p-2.5 bg-white border border-light-outline-variant rounded-md text-body-md text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-light-primary focus:ring-2 focus:ring-light-primary/20 resize-y"
                       />
                     ) : (
-                      <p className="text-body-md text-slate-900 whitespace-pre-line">
+                      <p className="text-body-md text-slate-900 whitespace-pre-line break-words [overflow-wrap:anywhere]">
                         {turn.draft}
                       </p>
                     )}

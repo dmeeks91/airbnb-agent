@@ -303,7 +303,7 @@ export function MessagesView({
         )}
       </div>
 
-      <main className="px-4 py-3 flex flex-col gap-3.5 flex-1">
+      <main className="px-4 py-3 flex flex-col gap-3.5 flex-1 min-w-0">
         {showUnmatchedBanner && (
           <section
             aria-label="Unmatched incoming emails"
@@ -345,7 +345,7 @@ export function MessagesView({
                     <p className="font-label text-label-md font-semibold text-slate-900 truncate">
                       {item.guestName} · {item.subject}
                     </p>
-                    <p className="text-body-sm text-slate-600 line-clamp-2 mt-0.5">
+                    <p className="text-body-sm text-slate-600 line-clamp-2 mt-0.5 break-words [overflow-wrap:anywhere]">
                       &ldquo;{item.bodyPreview}&rdquo;
                     </p>
                   </div>
@@ -462,13 +462,13 @@ export function MessagesView({
                           </span>
                           <span>{formatShortClock(msg.sentAt)}</span>
                         </div>
-                        <p className="text-body-md text-light-secondary">
+                        <p className="text-body-md text-light-secondary break-words [overflow-wrap:anywhere]">
                           &ldquo;{msg.body}&rdquo;
                         </p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-body-md text-light-secondary bg-light-surface-container-low p-2.5 rounded-md border border-light-outline-variant/70">
+                    <p className="text-body-md text-light-secondary bg-light-surface-container-low p-2.5 rounded-md border border-light-outline-variant/70 break-words [overflow-wrap:anywhere]">
                       &ldquo;{thread.lastPreview}&rdquo;
                     </p>
                   )}

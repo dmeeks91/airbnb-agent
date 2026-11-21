@@ -36,11 +36,11 @@ const NOISE_SUBJECT_PATTERNS: Array<{ reason: string; pattern: RegExp }> = [
   },
   {
     reason: 'tax_or_policy',
-    pattern: /\b(1099|tax document|tax form|terms of service|privacy policy|superhost status|hosting tips|pricing tips)\b/i,
+    pattern: /\b(1099|tax document|tax form|terms of service|privacy policy|superhost status|hosting tips|pricing tips|get ready, guests can soon book|attract more attention to your listing|a great price is key to getting booked|control when you host)\b/i,
   },
   {
     reason: 'reservation_reminder',
-    pattern: /\b(reservation reminder|calendar reminder|check-in reminder|upcoming check-in|is coming soon|get ready for .+['’]s arrival|reminder: review)\b/i,
+    pattern: /\b(reservation reminder|calendar reminder|check-in reminder|upcoming check-in|is coming soon|get ready for .+['’]s arrival|reminder: review|when you['’]re ready, let .+ know what\s*you['’]ve decided about their (?:in|en)quiry)\b/i,
   },
   {
     reason: 'cohost_admin_notice',
@@ -495,7 +495,7 @@ function extractDigestMessages(rawBody: string): ParsedEmailMessage[] | null {
 function extractInquiryOrRequestMessage(
   rawBody: string,
   template: string | null,
-): { guestName: string | null; messages: ParsedEmailMessage[] } | null {
+): { guestName: string | null; messages: ParsedEmailMessage[]; matchedAnchor: boolean } | null {
   const headerMatch = rawBody.match(/RESPOND\s+TO\s+(.+?)[’']S\s+(INQUIRY|ENQUIRY|REQUEST)/i);
   const isInquiryOrRequestTemplate = Boolean(
     template && /(?:host_initial_(?:in|en)quiry|reservation_host_pending)/i.test(template),
@@ -515,6 +515,7 @@ function extractInquiryOrRequestMessage(
     return {
       guestName: headerMatch ? toTitleCaseName(headerMatch[1]) : null,
       messages: [],
+      matchedAnchor: true,
     };
   }
 
@@ -526,7 +527,18 @@ function extractInquiryOrRequestMessage(
 
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
-    const bracketUrlMatch = trimmed.match(/^\[(https?:\/\/[^\]]+)\]$/i);
+    if (!/^\[https?:\/\//i.test(trimmed)) {
+      continue;
+    }
+
+    let combinedBracket = trimmed;
+    let endIdx = i;
+    while (!combinedBracket.endsWith(']') && endIdx + 1 < lines.length && endIdx - i < 5) {
+      endIdx++;
+      combinedBracket += lines[endIdx].trim();
+    }
+
+    const bracketUrlMatch = combinedBracket.match(/^\[(https?:\/\/[^\]]+)\]$/i);
     const bracketUrl = bracketUrlMatch ? parseAirbnbUrlObject(bracketUrlMatch[1]) : null;
     if (
       bracketUrl &&
@@ -543,19 +555,21 @@ function extractInquiryOrRequestMessage(
             prevText,
           )
         ) {
+          i = endIdx;
           continue;
         }
         if (prevText.length <= 50 && !/^https?:\/\//i.test(prevText)) {
           guestName = toTitleCaseName(prevText);
-          profileStartLine = i + 1;
+          profileStartLine = endIdx + 1;
           break;
         }
       }
     }
+    i = endIdx;
   }
 
   if (profileStartLine === -1) {
-    return { guestName, messages: [] };
+    return { guestName, messages: [], matchedAnchor: false };
   }
 
   const bodyLines: string[] = [];
@@ -567,6 +581,7 @@ function extractInquiryOrRequestMessage(
 
     if (
       /^Pre-approve\s*\/\s*Decline/i.test(trimmed) ||
+      /^Accept\s*\/\s*Decline/i.test(trimmed) ||
       /^Review\s+(?:in|en)quiry/i.test(trimmed) ||
       (lineUrl !== null && /^\/rooms\//i.test(lineUrl.pathname)) ||
       /^YOU HAVE 24 HOURS TO RESPOND/i.test(trimmed) ||
@@ -604,7 +619,7 @@ function extractInquiryOrRequestMessage(
   const messages: ParsedEmailMessage[] =
     body && guestName ? [{ senderName: guestName, role: 'guest', body }] : [];
 
-  return { guestName, messages };
+  return { guestName, messages, matchedAnchor: true };
 }
 
 function extractGuestNameFallback(
@@ -665,7 +680,7 @@ function extractListingTitleHint(subject: string, rawBody: string): string | nul
     '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)';
 
   const dateTailPattern = new RegExp(
-    `(?:,\\s*|\\s+for\\s+|\\s*[-–—|]\\s*)(?:${monthToken}\\s+\\d{1,2}|\\d{1,2}\\s*(?:[-–—]\\s*\\d{1,2}\\s*)?${monthToken}).*$`,
+    `(?:,\\s*|\\s+for\\s+|\\s*[-–—|]\\s*)(?:${monthToken}\\s*\\d{1,2}|\\d{1,2}\\s*(?:[-–—]\\s*\\d{1,2}\\s*)?${monthToken}).*$`,
     'i',
   );
 
@@ -770,9 +785,9 @@ function extractStayDatesAndNights(
     }
   }
 
-  // Pattern 1: Cross-month range, e.g. "May 29 - Jun 2, 2026" or "Dec 30, 2026 - Jan 2, 2027"
+  // Pattern 1: Cross-month range, e.g. "May 29 - Jun 2, 2026" or "Oct31–Nov 2, 2026"
   const crossMonth = combined.match(
-    /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})(?:,\s*(\d{4}))?\s*[-–—to]+\s*(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})(?:,\s*(\d{4}))?\b/i,
+    /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*(\d{1,2})(?:,\s*(\d{4}))?\s*[-–—to]+\s*(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*(\d{1,2})(?:,\s*(\d{4}))?\b/i,
   );
   if (crossMonth) {
     const startMonth = MONTH_INDEX[crossMonth[1].toLowerCase()];
@@ -786,8 +801,14 @@ function extractStayDatesAndNights(
         ? endYear - 1
         : endYear;
     const nights = daysBetweenUtc(startYear, startMonth, startDay, endYear, endMonth, endDay);
+    const startPart = crossMonth[3]
+      ? `${crossMonth[1]} ${startDay}, ${crossMonth[3]}`
+      : `${crossMonth[1]} ${startDay}`;
+    const endPart = crossMonth[6]
+      ? `${crossMonth[4]} ${endDay}, ${crossMonth[6]}`
+      : `${crossMonth[4]} ${endDay}`;
     return {
-      stayDates: crossMonth[0].replace(/\s+/g, ' ').trim(),
+      stayDates: `${startPart} - ${endPart}`,
       nights,
     };
   }
@@ -818,9 +839,9 @@ function extractStayDatesAndNights(
     }
   }
 
-  // Pattern 2: Same-month range, e.g. "May 14 - 17, 2026" or "Aug 5 – 9"
+  // Pattern 2: Same-month range, e.g. "May 14 - 17, 2026" or "Nov11–15"
   const sameMonth = combined.match(
-    /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})\s*[-–—]\s*(\d{1,2})(?:,\s*(\d{4}))?\b/i,
+    /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*(\d{1,2})\s*[-–—]\s*(\d{1,2})(?:,\s*(\d{4}))?\b/i,
   );
   if (sameMonth) {
     const month = MONTH_INDEX[sameMonth[1].toLowerCase()];
@@ -828,8 +849,11 @@ function extractStayDatesAndNights(
     const endDay = Number.parseInt(sameMonth[3], 10);
     const year = sameMonth[4] ? Number.parseInt(sameMonth[4], 10) : fallbackYear;
     const nights = daysBetweenUtc(year, month, startDay, year, month, endDay);
+    const stayDates = sameMonth[4]
+      ? `${sameMonth[1]} ${startDay} - ${endDay}, ${sameMonth[4]}`
+      : `${sameMonth[1]} ${startDay} - ${endDay}`;
     return {
-      stayDates: sameMonth[0].replace(/\s+/g, ' ').trim(),
+      stayDates,
       nights,
     };
   }
@@ -919,6 +943,15 @@ function cleanGenericMessageBody(rawText: string, guestName: string | null): str
     .trim();
 }
 
+function looksLikeRawAirbnbTemplateShell(rawText: string): boolean {
+  return (
+    /[?&]c=\.pi\d+\.pk[A-Za-z0-9%_=-]+/i.test(rawText) ||
+    /^\s*RESPOND\s+TO\s+.+?[’']S\s+(?:INQUIRY|ENQUIRY|REQUEST)\b/im.test(rawText) ||
+    /^\s*(?:Accept|Pre-approve)\s*\/\s*Decline\s*$/im.test(rawText) ||
+    /For your protection and safety, always communicate through Airbnb/i.test(rawText)
+  );
+}
+
 function checkStaticNoise(
   fromAddress: string,
   replyToAddress: string | null,
@@ -944,6 +977,10 @@ function checkStaticNoise(
         return rule.reason;
       }
     }
+  }
+
+  if (/^\s*reminder:\s*/i.test(subject)) {
+    return 'reservation_reminder';
   }
 
   const looksLikeGuestMessage = GUEST_MESSAGE_SUBJECT_PATTERNS.some((pattern) =>
@@ -1036,7 +1073,7 @@ export async function parseAirbnbEmailWithMeta(
   } else {
     const inquiryParsed = extractInquiryOrRequestMessage(rawBody, airbnbTemplate);
     if (inquiryParsed) {
-      matchedStructuredTemplate = true;
+      matchedStructuredTemplate = inquiryParsed.matchedAnchor;
       guestName = inquiryParsed.guestName;
       messages = inquiryParsed.messages;
     }
@@ -1046,7 +1083,8 @@ export async function parseAirbnbEmailWithMeta(
     guestName = extractGuestNameFallback(fromName, subject, rawBody);
   }
 
-  // Fallback for older / simpler Airbnb plain-text formats
+  // Fallback for older / simpler Airbnb plain-text formats (never for matched structured
+  // templates with zero messages or raw HTML-derived Airbnb email shells)
   let bodyText = '';
   let hasAttachmentsOnly = false;
 
@@ -1056,7 +1094,11 @@ export async function parseAirbnbEmailWithMeta(
       guestOnlyBodies.length > 0
         ? guestOnlyBodies.join('\n\n')
         : messages[messages.length - 1].body;
-  } else if (!staticNoiseReason) {
+  } else if (
+    !staticNoiseReason &&
+    !matchedStructuredTemplate &&
+    !looksLikeRawAirbnbTemplateShell(rawBody)
+  ) {
     const cleanedBody = cleanGenericMessageBody(rawBody, guestName);
     const hasAttachmentHint =
       (email.attachments?.length ?? 0) > 0 ||
