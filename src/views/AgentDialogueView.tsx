@@ -48,16 +48,51 @@ export function AgentDialogueView({
   const [editingTurnId, setEditingTurnId] = useState<string | null>(null);
   const [copiedTurnId, setCopiedTurnId] = useState<string | null>(null);
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+  const [failedInstruction, setFailedInstruction] = useState<string | undefined>(undefined);
   const initiatedTurn1ForThreadRef = useRef<string | null>(null);
 
   const theme = getPropertyTheme(property.code);
 
-  const unansweredBurst = useMemo(
-    () => messages.filter((msg) => msg.sender === 'guest' && msg.unanswered),
-    [messages],
-  );
+  const pinnedContext = useMemo<{ label: string; items: readonly ThreadMessage[] }>(() => {
+    const unansweredBurst = messages.filter((msg) => msg.sender === 'guest' && msg.unanswered);
+    if (unansweredBurst.length > 0) {
+      return {
+        label: `Unanswered Guest Burst (${unansweredBurst.length})`,
+        items: unansweredBurst,
+      };
+    }
+
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].sender === 'guest') {
+        return {
+          label: 'Latest Guest Message',
+          items: [messages[i]],
+        };
+      }
+    }
+
+    const latestMessage = messages[messages.length - 1];
+    if (latestMessage) {
+      return {
+        label: latestMessage.sender === 'host' ? 'Latest Host Reply' : 'Latest Thread Message',
+        items: [latestMessage],
+      };
+    }
+
+    return {
+      label: 'Latest Message Preview',
+      items: [],
+    };
+  }, [messages]);
 
   const turns = thread.activeCoachSession?.turns ?? [];
+
+  const resolveErrorMessage = (error: unknown, fallback: string): string => {
+    if (error instanceof Error && error.message.trim().length > 0) {
+      return error.message.trim();
+    }
+    return fallback;
+  };
 
   // Lazy Turn 1 drafting on first open when no active coaching session exists
   useEffect(() => {
@@ -73,12 +108,18 @@ export function AgentDialogueView({
     initiatedTurn1ForThreadRef.current = thread.id;
     let cancelled = false;
     setDraftError(null);
+    setFailedInstruction(undefined);
     setIsGenerating(true);
 
     void onCoachTurn({})
-      .catch(() => {
+      .catch((error: unknown) => {
         if (!cancelled) {
-          setDraftError('Could not generate the initial draft. Tap retry to try again.');
+          setDraftError(
+            resolveErrorMessage(
+              error,
+              'Could not generate the initial draft. Tap retry to try again.',
+            ),
+          );
         }
       })
       .finally(() => {
@@ -99,9 +140,18 @@ export function AgentDialogueView({
     setDraftError(null);
     setIsGenerating(true);
     try {
-      await onCoachTurn({});
-    } catch {
-      setDraftError('Could not generate the initial draft. Tap retry to try again.');
+      await onCoachTurn(failedInstruction ? { instruction: failedInstruction } : {});
+      setFailedInstruction(undefined);
+      if (failedInstruction) {
+        setCoachInput('');
+      }
+    } catch (error: unknown) {
+      setDraftError(
+        resolveErrorMessage(
+          error,
+          'Could not generate a draft right now. Tap retry to try again.',
+        ),
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -115,11 +165,19 @@ export function AgentDialogueView({
     }
     setCoachInput('');
     setDraftError(null);
+    setFailedInstruction(undefined);
     setIsGenerating(true);
     try {
       await onCoachTurn({ instruction: trimmed });
-    } catch {
-      setDraftError('Could not update draft with your note. Please try again.');
+    } catch (error: unknown) {
+      setCoachInput(trimmed);
+      setFailedInstruction(trimmed);
+      setDraftError(
+        resolveErrorMessage(
+          error,
+          'Could not update draft with your note. Please try again.',
+        ),
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -130,11 +188,17 @@ export function AgentDialogueView({
       return;
     }
     setDraftError(null);
+    setFailedInstruction(undefined);
     setIsGenerating(true);
     try {
       await onCoachTurn({ refreshBurst: true });
-    } catch {
-      setDraftError('Could not refresh draft for the new message. Please try again.');
+    } catch (error: unknown) {
+      setDraftError(
+        resolveErrorMessage(
+          error,
+          'Could not refresh draft for the new message. Please try again.',
+        ),
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -255,7 +319,7 @@ export function AgentDialogueView({
           className="w-full flex items-center justify-between text-left"
         >
           <span className="text-[11px] font-label font-semibold text-light-secondary uppercase tracking-wider">
-            Unanswered Guest Burst ({unansweredBurst.length || 1})
+            {pinnedContext.label}
           </span>
           <span className="flex items-center gap-1 text-label-sm text-light-secondary">
             <span>{isBurstExpanded ? 'Hide' : 'Show'}</span>
@@ -269,14 +333,17 @@ export function AgentDialogueView({
 
         {isBurstExpanded && (
           <div className="flex flex-col gap-2 max-h-48 overflow-y-auto overscroll-contain">
-            {unansweredBurst.length > 0 ? (
-              unansweredBurst.map((msg) => (
+            {pinnedContext.items.length > 0 ? (
+              pinnedContext.items.map((msg) => (
                 <div
                   key={msg.id}
                   className="bg-white border border-light-outline-variant rounded-xl rounded-tl-sm p-2.5 text-body-sm text-light-on-surface flex flex-col gap-1 min-w-0"
                 >
                   <div className="flex items-center justify-between text-[11px] font-code text-light-secondary">
-                    <span className="font-medium text-light-on-surface">{msg.senderName}</span>
+                    <span className="font-medium text-light-on-surface">
+                      {msg.senderName}
+                      {msg.sender === 'host' ? ' (Host)' : ''}
+                    </span>
                     <span>{formatShortClock(msg.sentAt)}</span>
                   </div>
                   <p className="break-words [overflow-wrap:anywhere]">{msg.body}</p>

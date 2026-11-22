@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
 import type { RuleCategory } from '../../types/cohost.ts';
 
 export interface VertexDraftOutput {
@@ -32,7 +32,7 @@ export interface VertexFallbackEmailResult {
 let cachedClient: GoogleGenAI | null = null;
 
 export function getVertexModelId(): string {
-  return process.env.VERTEX_MODEL_ID?.trim() || 'gemini-2.5-flash';
+  return process.env.VERTEX_MODEL_ID?.trim() || 'gemini-3.8-flash';
 }
 
 export function isVertexConfigured(): boolean {
@@ -55,7 +55,7 @@ function getVertexClient(): GoogleGenAI | null {
   cachedClient = new GoogleGenAI({
     vertexai: true,
     project: process.env.GOOGLE_CLOUD_PROJECT?.trim(),
-    location: process.env.GOOGLE_CLOUD_LOCATION?.trim() || 'us-central1',
+    location: process.env.GOOGLE_CLOUD_LOCATION?.trim() || 'global',
   });
   return cachedClient;
 }
@@ -90,6 +90,7 @@ export async function generateDraftWithVertex(params: {
     config: {
       systemInstruction: params.systemInstruction,
       temperature: 0.3,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
@@ -164,6 +165,7 @@ export async function extractFactsWithVertex(params: {
     contents,
     config: {
       temperature: 0.1,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
@@ -248,6 +250,7 @@ export async function parseUnrecognizedEmailWithVertex(params: {
     config: {
       systemInstruction,
       temperature: 0.0,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,

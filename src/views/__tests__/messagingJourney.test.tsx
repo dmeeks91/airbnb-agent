@@ -327,4 +327,25 @@ describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Threa
     render(<App store={store} />);
     expect(document.body.contains(screen.getByText('Mountain Chalet'))).toBe(true);
   });
+
+  it('shows Latest Guest Message instead of Unanswered Guest Burst when opening Agent Dialogue on an answered thread', async () => {
+    const store = createLocalCohostStore();
+
+    render(
+      <App
+        store={store}
+        initialPropertyId="prop-coastal-loft"
+        initialView="dialogue"
+        initialThreadId="thread-julian"
+      />,
+    );
+
+    expect(document.body.contains(screen.getByText('Latest Guest Message'))).toBe(true);
+    expect(screen.queryByText(/Unanswered Guest Burst/i)).toBeNull();
+    expect(
+      document.body.contains(
+        screen.getByText(/where is the Wi-Fi router located/i),
+      ),
+    ).toBe(true);
+  });
 });

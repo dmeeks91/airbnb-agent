@@ -109,11 +109,11 @@ export function useThreads(store: CohostStore, propertyId: string) {
             skipRemoteSync: true,
           });
           return response.session;
-        } catch {
+        } catch (error) {
           if (threadActionEpochRef.current.get(epochKey) !== requestEpoch) {
             return null;
           }
-          // Fall back to deterministic grounded generator below
+          throw error;
         }
       }
 

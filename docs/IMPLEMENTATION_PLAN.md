@@ -67,9 +67,9 @@ flowchart LR
    * Both internal routes verify Google-signed OIDC tokens from the Pub/Sub and Scheduler service accounts.
    * Sync uses Gmail's history cursor (monotonic updates + `404` fallback), deduplicates at two layers (first by `gmailMessageId`, then per-message inside each thread by a deterministic content fingerprint of `(role, senderName, normalizedBody)` so duplicate copies forwarded from both personal inboxes never create duplicate bubbles or double push alerts), filters non-guest Airbnb noise (payouts, review reminders, inquiry reminders, arrival reminders, promos), and triggers FCM push immediately without waiting on Vertex AI.
 3. **AI Access (Vertex AI):**
-   * Uses `@google/genai` configured with `vertexai: true` in a US region inside the same GCP project.
+   * Uses `@google/genai` configured with `vertexai: true` against the Vertex `global` endpoint (`GOOGLE_CLOUD_LOCATION=global`, `thinkingLevel: LOW`) inside the same GCP project.
    * Authenticates automatically via the Cloud Run service account (`roles/aiplatform.user`), with zero static API keys and paid privacy terms by default.
-   * Model ID (`gemini-2.5-flash`) is read from configuration (`VERTEX_MODEL_ID`) so upgrades take one env change.
+   * Model ID (`gemini-3.8-flash`) is read from configuration (`VERTEX_MODEL_ID`) so upgrades take one env change. In live Firestore/production mode, Vertex failures log on Cloud Run and surface an inline error banner with **Retry** instead of silently substituting the local offline stub.
 4. **Authentication & Security:**
    * Firebase Auth with Google Sign-In only.
    * Express auth middleware verifies Firebase Auth ID tokens (`firebase-admin`) plus `email_verified === true` against the explicit allowlist on every user-facing `/api/*` route.
@@ -239,7 +239,7 @@ airbnb-agent/
 
 ### Stage 4: Express Backend Routes, Workspace Gmail + Pub/Sub, Vertex AI & FCM Push
 * Implement `requireHostAuth.ts`, `requireGoogleOidc.ts`, `messageFingerprint.ts`, `promptBuilder.ts` (strict inquiry/pre-approval/pending `Access & Arrival` rule redaction, private floor constraint, no em-dashes, no sycophantic openers), `gmailClient.ts`, `ingestionService.ts` (two-layer dedupe, pending-request-to-thread merging, automatic co-host reply sync), `pushNotifier.ts`, and Express routes under `src/server/routes/`.
-* Wire `coachRoutes.ts`, `knowledgeRoutes.ts`, and `unmatchedRoutes.ts` to Vertex AI (`gemini-2.5-flash`) with graceful structured responses and local dev fallback when GCP credentials are absent.
+* Wire `coachRoutes.ts`, `knowledgeRoutes.ts`, and `unmatchedRoutes.ts` to Vertex AI (`gemini-3.8-flash` on `global`) with structured responses, explicit live error surfacing in production, and local dev fallback only when running offline without GCP credentials.
 * Complete `public/manifest.json`, `public/firebase-messaging-sw.js` (cold/warm deep-linking + stale token cleanup), and `scripts/setup-gcp-triggers.sh`.
 * Add comprehensive backend unit tests (`promptBuilder.test.ts`, `ingestionService.test.ts`) and React Testing Library end-to-end journey tests covering all views and authentic multi-step flows.
 

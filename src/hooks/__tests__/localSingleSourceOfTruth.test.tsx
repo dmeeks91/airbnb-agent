@@ -272,4 +272,40 @@ describe('Local dev single source of truth vs Firestore live API mode', () => {
     });
     expect(screen.queryByText('Parsed Rules to Merge')).toBeNull();
   });
+
+  it('surfaces /api/coach/turn errors in AgentDialogueView in firestore mode instead of silently echoing via localDraftFallback', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Vertex AI model unavailable (404)' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const firestoreModeStore = new LocalCohostStore(createSeedSnapshot(), 'firestore');
+    render(
+      <App
+        store={firestoreModeStore}
+        initialPropertyId="prop-coastal-loft"
+        initialView="dialogue"
+        initialThreadId="thread-julian"
+      />,
+    );
+
+    const input = screen.getByLabelText('Tell AI how to refine draft');
+    await user.type(input, 'Wish them safe travels home!');
+    await user.click(screen.getByRole('button', { name: 'Send coaching instruction' }));
+
+    await waitFor(() => {
+      expect(
+        document.body.contains(screen.getByText('Vertex AI model unavailable (404)')),
+      ).toBe(true);
+    });
+    // Must NEVER render the offline echo stub in live Firestore mode
+    expect(screen.queryByText(/Drafted using Coastal Loft voice guardrails/)).toBeNull();
+    // Preserves the host's note in the input so nothing is lost on failure
+    expect(
+      document.body.contains(screen.getByDisplayValue('Wish them safe travels home!')),
+    ).toBe(true);
+  });
 });

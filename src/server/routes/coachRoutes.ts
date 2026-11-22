@@ -5,7 +5,7 @@ import type {
   CoachTurnResponse,
 } from '../../types/cohost.ts';
 import { buildLocalFallbackCoachTurn } from '../../utils/localDraftFallback.ts';
-import { generateDraftWithVertex } from '../config/vertex.ts';
+import { generateDraftWithVertex, isVertexConfigured } from '../config/vertex.ts';
 import { requireHostAuth, type HostAuthRequest } from '../middleware/requireHostAuth.ts';
 import { buildCoachPrompt, sanitizeDraftOutput } from '../services/promptBuilder.ts';
 import {
@@ -91,6 +91,9 @@ export function createCoachRouter(deps: CoachRoutesDeps = {}): Router {
         userPrompt: prompt.userPrompt,
       });
 
+      const allowLocalStub =
+        process.env.NODE_ENV !== 'production' && !isVertexConfigured();
+
       if (vertexOutput) {
         const sanitizedDraft = sanitizeDraftOutput(vertexOutput.draftReply);
         agentTurn = {
@@ -104,7 +107,7 @@ export function createCoachRouter(deps: CoachRoutesDeps = {}): Router {
           createdAt: new Date().toISOString(),
         };
         source = 'vertex';
-      } else {
+      } else if (allowLocalStub) {
         agentTurn = buildLocalFallbackCoachTurn({
           property,
           thread,
@@ -113,6 +116,12 @@ export function createCoachRouter(deps: CoachRoutesDeps = {}): Router {
           voiceProfile,
           instruction,
         });
+      } else {
+        console.error('[coach/turn] Vertex AI unavailable or returned an empty response');
+        res.status(502).json({
+          error: 'AI drafting is temporarily unavailable. Please tap Retry in a moment.',
+        });
+        return;
       }
 
       const nextSession: ActiveCoachSession = {
@@ -129,6 +138,7 @@ export function createCoachRouter(deps: CoachRoutesDeps = {}): Router {
       };
       res.json(responsePayload);
     } catch (error) {
+      console.error('[coach/turn] Failed to generate draft:', error);
       const message = error instanceof Error ? error.message : 'Failed to generate draft';
       res.status(500).json({ error: message });
     }
