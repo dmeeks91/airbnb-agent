@@ -1,4 +1,5 @@
 import { Router, type RequestHandler } from 'express';
+import { createAuditRouter } from './auditRoutes.ts';
 import { createCoachRouter } from './coachRoutes.ts';
 import { createInternalRouter } from './internalRoutes.ts';
 import { createKnowledgeRouter } from './knowledgeRoutes.ts';
@@ -42,6 +43,12 @@ export function createApiRouter(deps: ApiRouterDeps = {}): Router {
   );
   router.use(
     createUnmatchedRouter({
+      repository: deps.repository,
+      authMiddleware: deps.authMiddleware,
+    }),
+  );
+  router.use(
+    createAuditRouter({
       repository: deps.repository,
       authMiddleware: deps.authMiddleware,
     }),

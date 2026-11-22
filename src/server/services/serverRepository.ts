@@ -1,11 +1,15 @@
 import { createSeedSnapshot } from '../../data/seedData.ts';
 import type {
   ActiveCoachSession,
+  ExistingThreadRef,
   GuestThread,
   CohostDataSnapshot,
   HouseRule,
+  IgnoredEmailEntry,
   IngestionHealth,
+  ParsedAirbnbEmail,
   Property,
+  PropertyMatchCandidate,
   ThreadMessage,
   UnmatchedEmail,
   VoiceProfile,
@@ -13,6 +17,7 @@ import type {
 import { LocalCohostStore, type MarkSentOptions } from '../../services/localCohostStore.ts';
 import {
   parseMessageDoc,
+  parseParsedAirbnbEmail,
   parsePropertyDoc,
   parseRuleDoc,
   parseThreadDoc,
@@ -31,6 +36,7 @@ import {
   type ProcessedEmailRecord,
 } from './ingestionService.ts';
 import { computeMessageFingerprint } from './messageFingerprint.ts';
+import { matchProperty } from './propertyMatcher.ts';
 import { sendAndroidPushNotification, type PushRecipient } from './pushNotifier.ts';
 
 export interface IngestionStateDoc {
@@ -60,6 +66,11 @@ export interface CohostServerRepository extends IngestionStorageAdapter {
   deleteThread(propertyId: string, threadId: string): Promise<boolean>;
   assignUnmatchedEmail(unmatchedId: string, propertyId: string): Promise<GuestThread | null>;
   deleteUnmatchedEmail(unmatchedId: string): Promise<boolean>;
+  recordIgnoredEmail(entry: IgnoredEmailEntry): Promise<void>;
+  listIgnoredEmails(): Promise<IgnoredEmailEntry[]>;
+  restoreIgnoredEmail(
+    ignoredId: string,
+  ): Promise<{ restored: boolean; destination: 'thread' | 'unmatched' | null; threadId?: string }>;
   getIngestionState(): Promise<IngestionStateDoc>;
   updateIngestionState(partial: Partial<IngestionStateDoc>): Promise<void>;
   updateIngestionHealth(partial: Partial<IngestionHealth>): Promise<void>;
@@ -78,15 +89,92 @@ function parseEnvAllowedEmails(): string[] {
     .filter(Boolean);
 }
 
+const MAX_IGNORED_AUDIT_ENTRIES = 20;
+
+async function restoreIgnoredEntryThroughStorage(
+  storage: CohostServerRepository,
+  entry: IgnoredEmailEntry,
+): Promise<{ destination: 'thread' | 'unmatched'; threadId?: string }> {
+  const fallbackBody = entry.rawParsed.bodyText || entry.bodyPreview || entry.subject;
+  const restoredParsed: ParsedAirbnbEmail = {
+    ...entry.rawParsed,
+    classification: 'guest_message',
+    needsHostReply: true,
+    ignoreReason: null,
+    bodyText: fallbackBody,
+    messages:
+      entry.rawParsed.messages.length > 0
+        ? entry.rawParsed.messages
+        : [
+            {
+              senderName: entry.rawParsed.guestName ?? 'Guest',
+              role: 'guest',
+              body: fallbackBody,
+            },
+          ],
+  };
+
+  const properties = await storage.listProperties();
+  const allThreads = await storage.listAllThreads();
+  const candidates: PropertyMatchCandidate[] = properties.map((p) => ({
+    id: p.id,
+    name: p.name,
+    airbnbListingIds: p.airbnbListingIds,
+    titleAliases: p.titleAliases,
+  }));
+  const threadRefs: ExistingThreadRef[] = allThreads
+    .filter((t): t is GuestThread & { airbnbThreadId: string } => Boolean(t.airbnbThreadId))
+    .map((t) => ({
+      threadId: t.id,
+      propertyId: t.propertyId,
+      airbnbThreadId: t.airbnbThreadId,
+    }));
+
+  const match = matchProperty(restoredParsed, candidates, threadRefs);
+  if (match.matched) {
+    const property = properties.find((p) => p.id === match.propertyId);
+    if (property) {
+      const propertyThreads = allThreads.filter((t) => t.propertyId === property.id);
+      const ingestion = new IngestionService(storage, NOOP_PUSH_ADAPTER);
+      const result = await ingestion.ingestIntoProperty({
+        property,
+        propertyThreads,
+        parsed: restoredParsed,
+        preferredThreadId: match.existingThreadId,
+        recordProcessed: false,
+        sendPush: false,
+      });
+      if ('threadId' in result) {
+        return { destination: 'thread', threadId: result.threadId };
+      }
+      return { destination: 'thread' };
+    }
+  }
+
+  await storage.saveUnmatchedEmail({
+    id: `unmatched-${entry.gmailMessageId}`,
+    gmailMessageId: entry.gmailMessageId,
+    guestName: restoredParsed.guestName ?? 'Unknown Guest',
+    subject: restoredParsed.subject,
+    bodyPreview: restoredParsed.bodyText.slice(0, 280),
+    rawParsed: restoredParsed,
+    receivedAt: entry.receivedAt,
+    resolved: false,
+  });
+  return { destination: 'unmatched' };
+}
+
 export class InMemoryServerRepository implements CohostServerRepository {
   private store: LocalCohostStore;
   private readonly processed = new Map<string, ProcessedEmailRecord>();
+  private ignoredEmails: IgnoredEmailEntry[];
   private ingestionState: IngestionStateDoc;
   private ingestionHealth: IngestionHealth;
 
   constructor(initialSnapshot?: CohostDataSnapshot) {
     const snap = initialSnapshot ?? createSeedSnapshot();
     this.store = new LocalCohostStore(snap);
+    this.ignoredEmails = [...(snap.ignoredEmails ?? [])];
     this.ingestionHealth = { ...snap.ingestionHealth };
     this.ingestionState = {
       lastHistoryId: '100001',
@@ -109,6 +197,31 @@ export class InMemoryServerRepository implements CohostServerRepository {
 
   public async recordProcessedEmail(record: ProcessedEmailRecord): Promise<void> {
     this.processed.set(record.gmailMessageId, { ...record });
+  }
+
+  public async recordIgnoredEmail(entry: IgnoredEmailEntry): Promise<void> {
+    const filtered = this.ignoredEmails.filter((item) => item.id !== entry.id);
+    this.ignoredEmails = [{ ...entry }, ...filtered]
+      .sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt))
+      .slice(0, MAX_IGNORED_AUDIT_ENTRIES);
+  }
+
+  public async listIgnoredEmails(): Promise<IgnoredEmailEntry[]> {
+    return this.ignoredEmails.map((item) => ({ ...item }));
+  }
+
+  public async restoreIgnoredEmail(
+    ignoredId: string,
+  ): Promise<{ restored: boolean; destination: 'thread' | 'unmatched' | null; threadId?: string }> {
+    const target = this.ignoredEmails.find((item) => item.id === ignoredId);
+    if (!target) {
+      return { restored: false, destination: null };
+    }
+    const result = await restoreIgnoredEntryThroughStorage(this, target);
+    this.ignoredEmails = this.ignoredEmails.map((item) =>
+      item.id === ignoredId ? { ...item, restored: true } : item,
+    );
+    return { restored: true, ...result };
   }
 
   public async listProperties(): Promise<Property[]> {
@@ -824,6 +937,86 @@ class FirestoreServerRepository implements CohostServerRepository {
       (token) => !staleSet.has(token),
     );
     await userRef.update({ fcmTokens: remaining });
+  }
+
+  public async recordIgnoredEmail(entry: IgnoredEmailEntry): Promise<void> {
+    const admin = getFirebaseAdminServices();
+    if (!admin) {
+      return this.fallback.recordIgnoredEmail(entry);
+    }
+    await admin.db.doc(`ignoredEmails/${entry.id}`).set(entry);
+    const snap = await admin.db
+      .collection('ignoredEmails')
+      .orderBy('receivedAt', 'desc')
+      .get();
+    if (snap.docs.length > MAX_IGNORED_AUDIT_ENTRIES) {
+      const batch = admin.db.batch();
+      for (const staleDoc of snap.docs.slice(MAX_IGNORED_AUDIT_ENTRIES)) {
+        batch.delete(staleDoc.ref);
+      }
+      await batch.commit();
+    }
+  }
+
+  public async listIgnoredEmails(): Promise<IgnoredEmailEntry[]> {
+    const admin = getFirebaseAdminServices();
+    if (!admin) {
+      return this.fallback.listIgnoredEmails();
+    }
+    const snap = await admin.db
+      .collection('ignoredEmails')
+      .orderBy('receivedAt', 'desc')
+      .limit(MAX_IGNORED_AUDIT_ENTRIES)
+      .get();
+    return snap.docs.map((docSnap) => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        gmailMessageId: readString(data.gmailMessageId),
+        subject: readString(data.subject, '(No subject)'),
+        fromAddress: readString(data.fromAddress),
+        reason: readString(data.reason, 'ignored_noise'),
+        receivedAt: readString(data.receivedAt, new Date().toISOString()),
+        bodyPreview: readString(data.bodyPreview),
+        rawParsed: parseParsedAirbnbEmail(data.rawParsed, {
+          gmailMessageId: readString(data.gmailMessageId),
+          guestName: 'Guest',
+          subject: readString(data.subject, '(No subject)'),
+          bodyPreview: readString(data.bodyPreview),
+          receivedAt: readString(data.receivedAt, new Date().toISOString()),
+        }),
+        restored: Boolean(data.restored),
+      };
+    });
+  }
+
+  public async restoreIgnoredEmail(
+    ignoredId: string,
+  ): Promise<{ restored: boolean; destination: 'thread' | 'unmatched' | null; threadId?: string }> {
+    const admin = getFirebaseAdminServices();
+    if (!admin) {
+      return this.fallback.restoreIgnoredEmail(ignoredId);
+    }
+    const docRef = admin.db.doc(`ignoredEmails/${ignoredId}`);
+    const snap = await docRef.get();
+    const data = snap.data();
+    if (!snap.exists || !data) {
+      return { restored: false, destination: null };
+    }
+    const entry: IgnoredEmailEntry = {
+      id: snap.id,
+      gmailMessageId: readString(data.gmailMessageId),
+      subject: readString(data.subject, '(No subject)'),
+      fromAddress: readString(data.fromAddress),
+      reason: readString(data.reason, 'ignored_noise'),
+      receivedAt: readString(data.receivedAt, new Date().toISOString()),
+      bodyPreview: readString(data.bodyPreview),
+      rawParsed: data.rawParsed as ParsedAirbnbEmail,
+      restored: Boolean(data.restored),
+    };
+    const result = await restoreIgnoredEntryThroughStorage(this, entry);
+    await docRef.update({ restored: true });
+    return { restored: true, ...result };
   }
 }
 

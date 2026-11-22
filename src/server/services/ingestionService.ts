@@ -2,9 +2,11 @@ import type {
   ExistingThreadRef,
   GuestStage,
   GuestThread,
+  IgnoredEmailEntry,
   ParsedAirbnbEmail,
   Property,
   PropertyMatchCandidate,
+  ReservationUpdateType,
   ThreadMessage,
   UnmatchedEmail,
 } from '../../types/cohost.ts';
@@ -19,6 +21,7 @@ const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
 export type ProcessedEmailClassification =
   | 'guest_message'
   | 'host_reply_sync'
+  | 'reservation_update'
   | 'ignored_noise'
   | 'unmatched';
 
@@ -51,6 +54,7 @@ export interface IngestionStorageAdapter {
     markAllExistingAnswered: boolean;
   }): Promise<void>;
   saveUnmatchedEmail(item: UnmatchedEmail): Promise<void>;
+  recordIgnoredEmail?(entry: IgnoredEmailEntry): Promise<void>;
   recomputePropertyCounters(propertyId: string): Promise<void>;
   learnPropertyIdentifiers?(
     propertyId: string,
@@ -85,6 +89,14 @@ export type IngestionOutcome =
       propertyId: string;
       threadId: string;
       addedMessageCount: number;
+      pushSent: false;
+    }
+  | {
+      outcome: 'reservation_update_ingested';
+      gmailMessageId: string;
+      propertyId: string;
+      threadId: string;
+      updateType: ReservationUpdateType;
       pushSent: false;
     }
   | {
@@ -309,6 +321,19 @@ export class IngestionService {
         propertyId: null,
         threadId: null,
       });
+      if (this.storage.recordIgnoredEmail) {
+        await this.storage.recordIgnoredEmail({
+          id: `ignored-${sanitizeIdPart(gmailMessageId)}`,
+          gmailMessageId,
+          subject: parsed.subject || '(No subject)',
+          fromAddress: parsed.fromAddress,
+          reason: parsed.ignoreReason ?? 'ignored_noise',
+          receivedAt: nowIso,
+          bodyPreview: parsed.bodyText.slice(0, 240),
+          rawParsed: parsed,
+          restored: false,
+        });
+      }
       return {
         outcome: 'ignored_noise',
         gmailMessageId,
@@ -450,6 +475,136 @@ export class IngestionService {
       ? await this.storage.listThreadMessages(property.id, threadId)
       : [];
 
+    // Layer 2 Deduplication: deterministic content fingerprint per message
+    const seenFingerprints = new Set(existingMessages.map((m) => m.contentFingerprint));
+
+    const mergedAirbnbThreadId = parsed.airbnbThreadId ?? existingThread?.airbnbThreadId ?? null;
+    const mergedReservationCode =
+      parsed.reservationCode ?? existingThread?.reservationCode ?? null;
+    const mergedThreadUrl =
+      parsed.airbnbThreadId && parsed.airbnbThreadUrl
+        ? parsed.airbnbThreadUrl
+        : (existingThread?.airbnbThreadUrl ?? parsed.airbnbThreadUrl ?? null);
+    const mergedStage = mergeStage(existingThread?.stage, parsed.stage);
+    const mergedNights = parsed.nights ?? existingThread?.nights ?? null;
+    const mergedStayDates = parsed.stayDates ?? existingThread?.stayDates ?? null;
+    const mergedGuestName = parsed.guestName ?? existingThread?.guestName ?? 'Guest';
+    const mergedGuestCount = parsed.guestCount ?? existingThread?.guestCount ?? null;
+
+    if (parsed.classification === 'reservation_update') {
+      const updateType: ReservationUpdateType = parsed.reservationUpdateType ?? 'confirmed';
+      const eventBody =
+        updateType === 'canceled'
+          ? `Reservation${mergedReservationCode ? ` ${mergedReservationCode}` : ''} canceled by guest.`
+          : `Reservation${mergedReservationCode ? ` ${mergedReservationCode}` : ''} confirmed.`;
+      const eventFingerprint = computeMessageFingerprint(
+        'system',
+        'Airbnb',
+        `${updateType}:${mergedReservationCode ?? ''}:${mergedStayDates ?? ''}`,
+      );
+
+      const systemMessages: ThreadMessage[] = [];
+      if (!seenFingerprints.has(eventFingerprint)) {
+        seenFingerprints.add(eventFingerprint);
+        systemMessages.push({
+          id: `msg-${sanitizeIdPart(gmailMessageId)}-sys`,
+          threadId,
+          propertyId: property.id,
+          gmailMessageId,
+          contentFingerprint: eventFingerprint,
+          sender: 'system',
+          senderName: 'Airbnb',
+          body: eventBody,
+          sentAt: nowIso,
+          unanswered: false,
+          loggedManually: false,
+          archivedCoachNotes: [],
+          systemEvent: {
+            type: updateType,
+            reservationCode: mergedReservationCode,
+          },
+        });
+      }
+
+      if (systemMessages.length === 0 && existingThread) {
+        if (recordProcessed) {
+          await this.storage.recordProcessedEmail({
+            gmailMessageId,
+            receivedAt: nowIso,
+            classification: 'reservation_update',
+            propertyId: property.id,
+            threadId,
+          });
+        }
+        return {
+          outcome: 'deduped_by_fingerprint',
+          gmailMessageId,
+          propertyId: property.id,
+          threadId,
+          pushSent: false,
+        };
+      }
+
+      const nextStage: GuestStage =
+        updateType === 'confirmed'
+          ? mergeStage(mergedStage, 'confirmed')
+          : mergedStage;
+      const nextStatus =
+        updateType === 'canceled'
+          ? 'dismissed'
+          : (existingThread?.status ?? 'sent');
+
+      const updatedThread: GuestThread = {
+        id: threadId,
+        propertyId: property.id,
+        guestName: mergedGuestName,
+        guestCount: mergedGuestCount,
+        stayDates: mergedStayDates,
+        nights: mergedNights,
+        airbnbThreadId: mergedAirbnbThreadId,
+        reservationCode: mergedReservationCode,
+        airbnbThreadUrl: mergedThreadUrl,
+        stage: nextStage,
+        status: nextStatus,
+        reservationStatus: updateType,
+        unansweredCount: updateType === 'canceled' ? 0 : (existingThread?.unansweredCount ?? 0),
+        lastMessageAt: nowIso,
+        lastPreview: existingThread?.lastPreview ?? eventBody,
+        lastSentPreview: existingThread?.lastSentPreview ?? null,
+        lastSentBy: existingThread?.lastSentBy ?? null,
+        discountAlert: existingThread?.discountAlert ?? null,
+        activeCoachSession:
+          updateType === 'canceled' ? null : (existingThread?.activeCoachSession ?? null),
+      };
+
+      await this.storage.saveThreadAndMessages({
+        propertyId: property.id,
+        thread: updatedThread,
+        newMessages: systemMessages,
+        markAllExistingAnswered: updateType === 'canceled',
+      });
+      await this.storage.recomputePropertyCounters(property.id);
+
+      if (recordProcessed) {
+        await this.storage.recordProcessedEmail({
+          gmailMessageId,
+          receivedAt: nowIso,
+          classification: 'reservation_update',
+          propertyId: property.id,
+          threadId,
+        });
+      }
+
+      return {
+        outcome: 'reservation_update_ingested',
+        gmailMessageId,
+        propertyId: property.id,
+        threadId,
+        updateType,
+        pushSent: false,
+      };
+    }
+
     const sourceMessages =
       parsed.messages.length > 0
         ? parsed.messages
@@ -463,8 +618,6 @@ export class IngestionService {
             ]
           : [];
 
-    // Layer 2 Deduplication: deterministic content fingerprint per message
-    const seenFingerprints = new Set(existingMessages.map((m) => m.contentFingerprint));
     const isHostReplySync = parsed.classification === 'host_reply_sync';
     const newMessages: ThreadMessage[] = [];
 
@@ -493,19 +646,6 @@ export class IngestionService {
             : [],
       });
     });
-
-    const mergedAirbnbThreadId = parsed.airbnbThreadId ?? existingThread?.airbnbThreadId ?? null;
-    const mergedReservationCode =
-      parsed.reservationCode ?? existingThread?.reservationCode ?? null;
-    const mergedThreadUrl =
-      parsed.airbnbThreadId && parsed.airbnbThreadUrl
-        ? parsed.airbnbThreadUrl
-        : (existingThread?.airbnbThreadUrl ?? parsed.airbnbThreadUrl ?? null);
-    const mergedStage = mergeStage(existingThread?.stage, parsed.stage);
-    const mergedNights = parsed.nights ?? existingThread?.nights ?? null;
-    const mergedStayDates = parsed.stayDates ?? existingThread?.stayDates ?? null;
-    const mergedGuestName = parsed.guestName ?? existingThread?.guestName ?? 'Guest';
-    const mergedGuestCount = parsed.guestCount ?? existingThread?.guestCount ?? null;
 
     if (newMessages.length === 0) {
       // Even when message bodies are deduped, backfill newly discovered thread IDs or stage upgrades.
@@ -566,6 +706,7 @@ export class IngestionService {
         airbnbThreadUrl: mergedThreadUrl,
         stage: mergedStage,
         status: 'sent',
+        reservationStatus: existingThread?.reservationStatus ?? null,
         unansweredCount: 0,
         lastMessageAt: nowIso,
         lastPreview: lastBody,
@@ -641,6 +782,7 @@ export class IngestionService {
       airbnbThreadUrl: mergedThreadUrl,
       stage: mergedStage,
       status: isFlagged ? 'flagged' : 'needs_reply',
+      reservationStatus: existingThread?.reservationStatus ?? null,
       unansweredCount: nextUnansweredCount,
       lastMessageAt: nowIso,
       lastPreview: latestGuestBody,

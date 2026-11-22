@@ -582,4 +582,71 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
       ).status,
     ).toBe(403);
   });
+
+  it('lists and restores ignored emails through /api/audit/ignored endpoints', async () => {
+    const repo = new InMemoryServerRepository();
+    await repo.recordIgnoredEmail({
+      id: 'ignored-gm-audit-1',
+      gmailMessageId: 'gm-audit-1',
+      subject: 'Reminder: Respond to guest',
+      fromAddress: 'automated@airbnb.com',
+      reason: 'reservation_reminder',
+      receivedAt: '2026-11-21T12:00:00.000Z',
+      bodyPreview: 'Please reply soon.',
+      rawParsed: {
+        gmailMessageId: 'gm-audit-1',
+        rfcMessageId: null,
+        fromAddress: 'automated@airbnb.com',
+        fromName: 'Airbnb',
+        replyToAddress: null,
+        subject: 'Reminder: Respond to guest',
+        sentAt: '2026-11-21T12:00:00.000Z',
+        airbnbTemplate: null,
+        classification: 'ignored_noise',
+        needsHostReply: false,
+        ignoreReason: 'reservation_reminder',
+        guestName: 'Alex Guest',
+        guestCount: null,
+        messages: [],
+        bodyText: 'Please reply soon.',
+        hasAttachmentsOnly: false,
+        stage: 'inquiry',
+        stayDates: null,
+        nights: null,
+        airbnbThreadId: null,
+        reservationCode: null,
+        airbnbThreadUrl: null,
+        allAirbnbUrls: [],
+        airbnbListingId: null,
+        listingTitleHint: null,
+      },
+      restored: false,
+    });
+
+    const app = express();
+    app.use(express.json());
+    app.use(
+      '/api',
+      createApiRouter({
+        repository: repo,
+        authMiddleware: (_req, _res, next) => next(),
+      }),
+    );
+
+    const { baseUrl } = await startTestApp(app);
+    const listRes = await fetch(`${baseUrl}/api/audit/ignored`);
+    expect(listRes.status).toBe(200);
+    const listJson: unknown = await listRes.json();
+    expect(
+      isRecord(listJson) && Array.isArray(listJson.entries) ? listJson.entries.length : 0,
+    ).toBe(1);
+
+    const restoreRes = await fetch(`${baseUrl}/api/audit/ignored/ignored-gm-audit-1/restore`, {
+      method: 'POST',
+    });
+    expect(restoreRes.status).toBe(200);
+    const restoreJson: unknown = await restoreRes.json();
+    expect(isRecord(restoreJson) && restoreJson.ok).toBe(true);
+    expect(isRecord(restoreJson) && restoreJson.destination).toBe('unmatched');
+  });
 });

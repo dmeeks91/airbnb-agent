@@ -33,7 +33,7 @@ describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Threa
     // Embedded Filter popover filters by Status = Sent
     await user.click(screen.getByRole('button', { name: /Filter/i }));
     await user.click(screen.getByRole('button', { name: 'Sent' }));
-    expect(screen.queryByText(/Tap to open draft reply/)).toBeNull();
+    expect(screen.queryByText('Marcus L. (Nov 21 - 25)')).toBeNull();
     expect(document.body.contains(screen.getByText('Julian T. (Nov 15 - 19)'))).toBe(true);
 
     // Switch to Property B (Mountain Chalet)
@@ -45,7 +45,7 @@ describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Threa
     expect(document.body.contains(screen.getByText('Sarah K. (Dec 12 - 17)'))).toBe(true);
 
     // Open Sarah K. -> Agent Dialogue with interactive 15.5% Net Payout Warning Banner
-    await user.click(screen.getByText(/Tap to review payout & draft counter/));
+    await user.click(screen.getByText('Sarah K. (Dec 12 - 17)'));
     const payoutRegion = screen.getByRole('region', { name: 'Net payout breakdown' });
     expect(document.body.contains(payoutRegion)).toBe(true);
 
@@ -62,7 +62,7 @@ describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Threa
     render(<App store={store} />);
 
     // Open Marcus L. directly into Agent Dialogue
-    await user.click(screen.getByText(/Tap to open draft reply/));
+    await user.click(screen.getByText('Marcus L. (Nov 21 - 25)'));
 
     // Lazy Turn 1 draft generates automatically
     await waitFor(() => {

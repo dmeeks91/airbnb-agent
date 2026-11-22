@@ -498,4 +498,103 @@ describe('IngestionService (dual-inbox dedupe, co-host sync, pending merge, mid-
     const messages = await repo.listThreadMessages(allThreads[0].propertyId, allThreads[0].id);
     expect(messages.map((m) => m.sender)).toEqual(['guest', 'host']);
   });
+
+  it('handles Instant Book confirmations, merges follow-up guest messages, auto-clears cancellations, and records/restores ignored emails', async () => {
+    const { repo, alerts, service } = createHarness();
+
+    const confirmationRaw = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Reservation confirmed - Elena Rostova arrives Dec 12 - 15',
+      'Date: Fri, 20 Nov 2026 14:00:00 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'Reservation HM94K2 is confirmed for Coastal Loft.',
+      'https://www.airbnb.com/hosting/reservations/details/HM94K2',
+      'https://www.airbnb.com/rooms/900000000000000001',
+    ].join('\r\n');
+
+    const confResult = await service.processRawEmail(confirmationRaw, 'gm-conf-1');
+    expect(confResult.outcome).toBe('reservation_update_ingested');
+    expect(alerts).toHaveLength(0);
+
+    let allThreads = await repo.listAllThreads();
+    expect(allThreads).toHaveLength(1);
+    expect(allThreads[0].status).toBe('sent');
+    expect(allThreads[0].stage).toBe('confirmed');
+    expect(allThreads[0].reservationStatus).toBe('confirmed');
+    expect(allThreads[0].reservationCode).toBe('HM94K2');
+
+    // Follow-up guest message merges into the Instant Book confirmation thread
+    const guestMsgRaw = [
+      'From: Elena Rostova via Airbnb <express@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Re: Reservation HM94K2',
+      'Date: Sat, 21 Nov 2026 10:00:00 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'Hi! What is the gate code for parking?',
+      'https://www.airbnb.com/hosting/reservations/details/HM94K2',
+      'https://www.airbnb.com/rooms/900000000000000001',
+    ].join('\r\n');
+
+    const msgResult = await service.processRawEmail(guestMsgRaw, 'gm-conf-2');
+    expect(msgResult.outcome).toBe('guest_message_ingested');
+    expect(alerts).toHaveLength(1);
+
+    allThreads = await repo.listAllThreads();
+    expect(allThreads).toHaveLength(1);
+    expect(allThreads[0].status).toBe('needs_reply');
+    expect(allThreads[0].reservationStatus).toBe('confirmed');
+
+    // Cancellation auto-clears the active thread to the bottom handled list
+    const cancelRaw = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Canceled: Reservation HM94K2 for Dec 12 - 15',
+      'Date: Sat, 21 Nov 2026 12:00:00 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'This reservation has been canceled.',
+      'https://www.airbnb.com/hosting/reservations/details/HM94K2',
+      'https://www.airbnb.com/rooms/900000000000000001',
+    ].join('\r\n');
+
+    const cancelResult = await service.processRawEmail(cancelRaw, 'gm-cancel-1');
+    expect(cancelResult.outcome).toBe('reservation_update_ingested');
+    expect(alerts).toHaveLength(1);
+
+    allThreads = await repo.listAllThreads();
+    expect(allThreads[0].status).toBe('dismissed');
+    expect(allThreads[0].reservationStatus).toBe('canceled');
+    expect(allThreads[0].unansweredCount).toBe(0);
+
+    const threadMessages = await repo.listThreadMessages(allThreads[0].propertyId, allThreads[0].id);
+    expect(threadMessages.map((m) => m.sender)).toEqual(['system', 'guest', 'system']);
+
+    // Ignored email audit log records noise and supports restoring
+    const ignoredRaw = [
+      'From: Airbnb <automated@airbnb.com>',
+      'To: host@example.com',
+      'Subject: Reminder: Respond to inquiry at Coastal Loft',
+      'Date: Sat, 21 Nov 2026 13:00:00 +0000',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      'Please respond to your guest inquiry soon.',
+      'https://www.airbnb.com/rooms/900000000000000001',
+    ].join('\r\n');
+
+    const ignoredResult = await service.processRawEmail(ignoredRaw, 'gm-ignored-1');
+    expect(ignoredResult.outcome).toBe('ignored_noise');
+
+    const auditEntries = await repo.listIgnoredEmails();
+    expect(auditEntries).toHaveLength(1);
+    expect(auditEntries[0].restored).toBe(false);
+
+    const restored = await repo.restoreIgnoredEmail(auditEntries[0].id);
+    expect(restored.restored).toBe(true);
+    expect(restored.destination).toBe('thread');
+    const updatedAudit = await repo.listIgnoredEmails();
+    expect(updatedAudit[0].restored).toBe(true);
+  });
 });

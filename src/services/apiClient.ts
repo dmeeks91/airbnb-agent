@@ -258,3 +258,67 @@ export async function requestAssignUnmatched(
 export async function requestDeleteUnmatched(unmatchedId: string): Promise<{ ok: true }> {
   return deleteJson(`/api/unmatched/${encodeURIComponent(unmatchedId)}`);
 }
+
+export interface IgnoredEmailAuditSummary {
+  id: string;
+  gmailMessageId: string;
+  subject: string;
+  fromAddress: string;
+  reason: string;
+  receivedAt: string;
+  bodyPreview: string;
+  restored: boolean;
+}
+
+function parseIgnoredEmailSummary(raw: unknown): IgnoredEmailAuditSummary | null {
+  if (!isRecord(raw) || typeof raw.id !== 'string') {
+    return null;
+  }
+  return {
+    id: raw.id,
+    gmailMessageId: typeof raw.gmailMessageId === 'string' ? raw.gmailMessageId : raw.id,
+    subject: typeof raw.subject === 'string' ? raw.subject : '(No subject)',
+    fromAddress: typeof raw.fromAddress === 'string' ? raw.fromAddress : '',
+    reason: typeof raw.reason === 'string' ? raw.reason : 'ignored_noise',
+    receivedAt: typeof raw.receivedAt === 'string' ? raw.receivedAt : new Date().toISOString(),
+    bodyPreview: typeof raw.bodyPreview === 'string' ? raw.bodyPreview : '',
+    restored: Boolean(raw.restored),
+  };
+}
+
+export async function fetchIgnoredEmailsAudit(): Promise<IgnoredEmailAuditSummary[]> {
+  const headers = await buildAuthHeaders();
+  const response = await fetch('/api/audit/ignored', { method: 'GET', headers });
+  if (!response.ok) {
+    throw new ApiClientError(await parseErrorMessage(response), response.status);
+  }
+  const raw: unknown = await response.json();
+  if (!isRecord(raw) || !Array.isArray(raw.entries)) {
+    return [];
+  }
+  return raw.entries
+    .map(parseIgnoredEmailSummary)
+    .filter((entry): entry is IgnoredEmailAuditSummary => entry !== null);
+}
+
+export async function requestRestoreIgnoredEmail(
+  ignoredId: string,
+): Promise<{ ok: true; destination: 'thread' | 'unmatched' | null; threadId: string | null }> {
+  return postJson(
+    `/api/audit/ignored/${encodeURIComponent(ignoredId)}/restore`,
+    {},
+    (raw) => {
+      if (isRecord(raw) && raw.ok === true) {
+        return {
+          ok: true as const,
+          destination:
+            raw.destination === 'thread' || raw.destination === 'unmatched'
+              ? raw.destination
+              : null,
+          threadId: typeof raw.threadId === 'string' ? raw.threadId : null,
+        };
+      }
+      throw new ApiClientError('Malformed restore response', 500);
+    },
+  );
+}

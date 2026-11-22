@@ -26,6 +26,10 @@ Guest Co-Host is a mobile-first Android PWA for managing Airbnb guest messaging 
 * **Rule lifecycle:** Rule Details bottom sheet supports an optional Temporary / Seasonal Note expiration date so expired fixes are excluded automatically from AI prompts.
 * **Curated tone memory:** Cap learned diffs at 15 rolling entries with delete controls in Account so prompt context stays sharp and low-cost.
 * **Offline read resilience:** Enable Firestore local persistence so house rules, door codes, vendor contacts, and synced threads stay readable on weak cell signal.
+* **Live safety nets & reservation updates:**
+  * **Ignored email audit log:** Keep the last 20 silently filtered non-guest emails in an expandable list inside Account's Gmail Watch & Sync Health card, with a one-tap Restore action to pull any misclassified email back into the queue.
+  * **Response-time urgency indicator:** Highlight unanswered inquiries waiting 12+ hours directly on the existing card timestamp (amber text + clock icon) without adding extra banners or buttons.
+  * **Reservation confirmation & cancellation cards:** Parse confirmation and cancellation receipts as `reservation_update` events that append an inline timeline card in Guest Thread. Confirmations upgrade `inquiry` threads to `confirmed` (or sit in the bottom Handled list for Instant Books until a message arrives), and cancellations auto-clear pending `needs_reply` state into the bottom Handled list without pill badges.
 
 ---
 

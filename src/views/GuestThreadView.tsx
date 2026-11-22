@@ -1,5 +1,7 @@
 import {
   ArrowLeft,
+  CalendarCheck,
+  CalendarX,
   ChevronDown,
   ChevronUp,
   Plus,
@@ -115,6 +117,51 @@ export function GuestThreadView({
         </div>
 
         {messages.map((msg) => {
+          if (msg.sender === 'system') {
+            const isCanceled = msg.systemEvent?.type === 'canceled';
+            return (
+              <div
+                key={msg.id}
+                className={`rounded-xl border px-3.5 py-2.5 flex items-start gap-2.5 ${
+                  isCanceled
+                    ? 'bg-light-surface-container-low border-light-outline-variant'
+                    : 'bg-success-surface/60 border-green-200'
+                }`}
+              >
+                <span
+                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                    isCanceled
+                      ? 'bg-light-surface-container text-light-outline'
+                      : 'bg-success-surface text-success'
+                  }`}
+                >
+                  {isCanceled ? (
+                    <CalendarX className="w-3.5 h-3.5" aria-hidden="true" />
+                  ) : (
+                    <CalendarCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={`font-label text-label-sm font-semibold ${
+                        isCanceled ? 'text-light-on-surface' : 'text-success'
+                      }`}
+                    >
+                      {isCanceled ? 'Reservation canceled' : 'Reservation confirmed'}
+                    </span>
+                    <span className="text-[11px] font-code text-light-secondary shrink-0">
+                      {formatRelativeTime(msg.sentAt)} · {formatShortClock(msg.sentAt)}
+                    </span>
+                  </div>
+                  <p className="text-body-sm text-light-secondary mt-0.5 break-words [overflow-wrap:anywhere]">
+                    {msg.body}
+                  </p>
+                </div>
+              </div>
+            );
+          }
+
           const isHost = msg.sender === 'host';
           const hasNotes = msg.archivedCoachNotes.length > 0;
           const isNotesExpanded = expandedNotesMessageId === msg.id;

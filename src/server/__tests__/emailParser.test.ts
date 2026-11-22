@@ -320,7 +320,7 @@ describe('emailParser', () => {
     expect(parsedEnquiry.bodyText).not.toContain('Review enquiry');
   });
 
-  it('filters Canceled: Reservation notices and co-host invitations (including Unicode hyphens) as ignored_noise', async () => {
+  it('classifies Canceled: Reservation notices as reservation_update and filters co-host invitations (including Unicode hyphens) as ignored_noise', async () => {
     const canceled = [
       'From: Airbnb <automated@airbnb.com>',
       'To: host@example.com',
@@ -348,7 +348,10 @@ describe('emailParser', () => {
       'We sent your invitation to co-host.',
     ].join('\r\n');
 
-    expect((await parseAirbnbEmail(canceled)).classification).toBe('ignored_noise');
+    const parsedCanceled = await parseAirbnbEmail(canceled);
+    expect(parsedCanceled.classification).toBe('reservation_update');
+    expect(parsedCanceled.reservationUpdateType).toBe('canceled');
+    expect(parsedCanceled.reservationCode).toBe('HMFAKE9999');
     expect((await parseAirbnbEmail(cohostAccepted)).classification).toBe('ignored_noise');
     expect((await parseAirbnbEmail(cohostSent)).classification).toBe('ignored_noise');
   });

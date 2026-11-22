@@ -4,6 +4,7 @@ import {
   type GuestStage,
   type ParsedAirbnbEmail,
   type ParsedEmailMessage,
+  type ReservationUpdateType,
 } from '../../types/cohost.ts';
 
 const AIRBNB_HOST_PATTERN =
@@ -993,20 +994,48 @@ function checkStaticNoise(
     }
   }
 
+  return null;
+}
+
+function detectReservationUpdateType(
+  subject: string,
+  rawBody: string,
+): ReservationUpdateType | null {
   const isSystemReservationSubject =
     /\breservation\s+(?:confirmed|canceled|cancelled)\b/i.test(subject) ||
     /^(?:re:\s*)?(?:canceled|cancelled):\s*reservation\b/i.test(subject);
 
   if (
-    isSystemReservationSubject &&
-    !/\bsent\s+you\s+a\s+message\b/i.test(rawBody) &&
-    !/\bmessage\s+from\b/i.test(rawBody) &&
-    !/For your protection and safety, always communicate through Airbnb/i.test(rawBody)
+    !isSystemReservationSubject ||
+    /\bsent\s+you\s+a\s+message\b/i.test(rawBody) ||
+    /\bmessage\s+from\b/i.test(rawBody) ||
+    /For your protection and safety, always communicate through Airbnb/i.test(rawBody)
   ) {
-    return 'system_booking_receipt';
+    return null;
   }
 
+  if (/cancel(?:ed|led)/i.test(subject)) {
+    return 'canceled';
+  }
+  if (/confirmed/i.test(subject)) {
+    return 'confirmed';
+  }
   return null;
+}
+
+function extractReservationCodeFromText(subject: string, rawBody: string): string | null {
+  const subjectMatch = /\b(HM[A-Z0-9]{6,12})\b/.exec(subject);
+  if (subjectMatch) {
+    return subjectMatch[1].toUpperCase();
+  }
+  const bodyMatch = /\b(?:confirmation\s+code|reservation\s+code|reservation)\s*[:#]?\s*(HM[A-Z0-9]{6,12})\b/i.exec(
+    rawBody,
+  );
+  if (bodyMatch) {
+    return bodyMatch[1].toUpperCase();
+  }
+  const anyMatch = /\b(HM[A-Z0-9]{6,12})\b/.exec(rawBody);
+  return anyMatch ? anyMatch[1].toUpperCase() : null;
 }
 
 export interface ParsedAirbnbEmailMeta {
@@ -1043,8 +1072,18 @@ export async function parseAirbnbEmailWithMeta(
 
   const allAirbnbUrls = extractAllAirbnbUrls(textPart, htmlPart);
   const airbnbTemplate = extractAirbnbTemplate(allAirbnbUrls);
-  const { airbnbThreadId, reservationCode, airbnbThreadUrl, airbnbListingId } =
-    extractThreadAndListingMeta(allAirbnbUrls);
+  const {
+    airbnbThreadId,
+    reservationCode: urlReservationCode,
+    airbnbThreadUrl: urlAirbnbThreadUrl,
+    airbnbListingId,
+  } = extractThreadAndListingMeta(allAirbnbUrls);
+  const reservationCode = urlReservationCode ?? extractReservationCodeFromText(subject, rawBody);
+  const airbnbThreadUrl =
+    urlAirbnbThreadUrl ??
+    (reservationCode
+      ? `https://www.airbnb.com/hosting/reservations/details/${reservationCode}`
+      : null);
 
   const listingTitleHint = extractListingTitleHint(subject, rawBody);
   const { stayDates, nights } = extractStayDatesAndNights(subject, rawBody, sentAt);
@@ -1058,6 +1097,9 @@ export async function parseAirbnbEmailWithMeta(
     airbnbTemplate,
     rawBody,
   );
+  const reservationUpdateType = staticNoiseReason
+    ? null
+    : detectReservationUpdateType(subject, rawBody);
 
   // Extract structured messages from known Airbnb templates first
   let messages: ParsedEmailMessage[] = [];
@@ -1096,6 +1138,7 @@ export async function parseAirbnbEmailWithMeta(
         : messages[messages.length - 1].body;
   } else if (
     !staticNoiseReason &&
+    !reservationUpdateType &&
     !matchedStructuredTemplate &&
     !looksLikeRawAirbnbTemplateShell(rawBody)
   ) {
@@ -1128,6 +1171,16 @@ export async function parseAirbnbEmailWithMeta(
 
   if (staticNoiseReason) {
     classification = 'ignored_noise';
+    if (!bodyText && rawBody) {
+      bodyText = rawBody.replace(/\s+/g, ' ').trim().slice(0, 240);
+    }
+  } else if (messages.length === 0 && reservationUpdateType) {
+    classification = 'reservation_update';
+    needsHostReply = false;
+    ignoreReason = null;
+    if (!bodyText && rawBody) {
+      bodyText = rawBody.replace(/\s+/g, ' ').trim().slice(0, 240);
+    }
   } else if (messages.length === 0) {
     classification = 'ignored_noise';
     ignoreReason = 'empty_message_body';
@@ -1152,6 +1205,7 @@ export async function parseAirbnbEmailWithMeta(
     sentAt,
     airbnbTemplate,
     classification,
+    reservationUpdateType,
     needsHostReply,
     ignoreReason,
     guestName,

@@ -22,6 +22,7 @@ import type {
   SignOffMode,
   ThreadMessage,
   ThreadStatus,
+  ThreadSystemEvent,
   UnmatchedEmail,
   VoiceProfile,
 } from '../types/cohost.ts';
@@ -300,6 +301,10 @@ export function parseThreadDoc(
     airbnbThreadUrl: readNullableString(data.airbnbThreadUrl),
     stage: parseGuestStage(data.stage),
     status: parseThreadStatus(data.status),
+    reservationStatus:
+      data.reservationStatus === 'confirmed' || data.reservationStatus === 'canceled'
+        ? data.reservationStatus
+        : null,
     unansweredCount: readNumber(data.unansweredCount, 0),
     lastMessageAt: readString(data.lastMessageAt, new Date().toISOString()),
     lastPreview: readString(data.lastPreview),
@@ -316,19 +321,37 @@ export function parseMessageDoc(
   propertyId: string,
   data: Record<string, unknown>,
 ): ThreadMessage {
+  const sender =
+    data.sender === 'host' ? 'host' : data.sender === 'system' ? 'system' : 'guest';
+  const rawSys = isRecord(data.systemEvent) ? data.systemEvent : null;
+  const sysType =
+    rawSys?.type === 'confirmed'
+      ? ('confirmed' as const)
+      : rawSys?.type === 'canceled'
+        ? ('canceled' as const)
+        : null;
+  const systemEvent: ThreadSystemEvent | null =
+    rawSys && sysType
+      ? {
+          type: sysType,
+          reservationCode: readNullableString(rawSys.reservationCode),
+        }
+      : null;
+
   return {
     id,
     threadId,
     propertyId,
     gmailMessageId: readNullableString(data.gmailMessageId),
     contentFingerprint: readString(data.contentFingerprint),
-    sender: data.sender === 'host' ? 'host' : 'guest',
+    sender,
     senderName: readString(data.senderName, 'Guest'),
     body: readString(data.body),
     sentAt: readString(data.sentAt, new Date().toISOString()),
     unanswered: Boolean(data.unanswered),
     loggedManually: Boolean(data.loggedManually),
     archivedCoachNotes: readStringArray(data.archivedCoachNotes),
+    systemEvent,
   };
 }
 

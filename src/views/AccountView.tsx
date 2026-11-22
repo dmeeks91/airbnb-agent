@@ -2,14 +2,22 @@ import {
   Activity,
   Bell,
   Check,
+  ChevronDown,
+  ChevronUp,
   LogOut,
   MailCheck,
   Plus,
+  RotateCcw,
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { SelectPopover, type SelectOption } from '../components/ui/SelectPopover.tsx';
+import {
+  fetchIgnoredEmailsAudit,
+  requestRestoreIgnoredEmail,
+  type IgnoredEmailAuditSummary,
+} from '../services/apiClient.ts';
 import type {
   HostUserProfile,
   IngestionHealth,
@@ -69,6 +77,48 @@ export function AccountView({
   const [draftSignOffText, setDraftSignOffText] = useState<string | null>(null);
   const [newStyleRule, setNewStyleRule] = useState('');
   const [savedVoiceNotice, setSavedVoiceNotice] = useState(false);
+  const [isAuditOpen, setIsAuditOpen] = useState(false);
+  const [isLoadingAudit, setIsLoadingAudit] = useState(false);
+  const [auditEntries, setAuditEntries] = useState<IgnoredEmailAuditSummary[]>([]);
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  const handleToggleAuditLog = async () => {
+    const nextOpen = !isAuditOpen;
+    setIsAuditOpen(nextOpen);
+    if (!nextOpen) {
+      return;
+    }
+    setIsLoadingAudit(true);
+    setAuditError(null);
+    try {
+      const entries = await fetchIgnoredEmailsAudit();
+      setAuditEntries(entries);
+    } catch (error) {
+      setAuditError(
+        error instanceof Error ? error.message : 'Unable to load ignored email audit log.',
+      );
+    } finally {
+      setIsLoadingAudit(false);
+    }
+  };
+
+  const handleRestoreIgnored = async (ignoredId: string) => {
+    setRestoringId(ignoredId);
+    setAuditError(null);
+    try {
+      await requestRestoreIgnoredEmail(ignoredId);
+      setAuditEntries((prev) =>
+        prev.map((entry) => (entry.id === ignoredId ? { ...entry, restored: true } : entry)),
+      );
+    } catch (error) {
+      setAuditError(
+        error instanceof Error ? error.message : 'Unable to restore ignored email.',
+      );
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   const signOffMode = draftSignOffMode ?? voiceProfile.signOffMode;
   const signOffText = draftSignOffText ?? voiceProfile.signOffText;
@@ -260,6 +310,79 @@ export function AccountView({
               <span>{ingestionHealth.lastError}</span>
             </p>
           )}
+
+          <div className="pt-1 border-t border-light-outline-variant/60 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => void handleToggleAuditLog()}
+              aria-expanded={isAuditOpen}
+              className="w-full flex items-center justify-between bg-light-surface-container-low hover:bg-light-surface-container rounded-md px-3 py-2 border border-light-outline-variant/80 text-left transition"
+            >
+              <div>
+                <p className="font-label text-label-sm font-semibold text-light-on-surface">
+                  Recently Ignored Emails
+                </p>
+                <p className="text-[11px] text-light-secondary">
+                  Last 20 non-guest emails filtered by parser
+                </p>
+              </div>
+              {isAuditOpen ? (
+                <ChevronUp className="w-4 h-4 text-light-secondary shrink-0" aria-hidden="true" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-light-secondary shrink-0" aria-hidden="true" />
+              )}
+            </button>
+
+            {isAuditOpen && (
+              <div className="flex flex-col gap-2">
+                {auditError && (
+                  <p className="text-body-sm text-warning font-medium">{auditError}</p>
+                )}
+                {isLoadingAudit ? (
+                  <p className="text-body-sm text-light-secondary px-1 py-2">
+                    Loading recently ignored emails...
+                  </p>
+                ) : auditEntries.length === 0 ? (
+                  <p className="text-body-sm text-light-secondary px-1 py-2">
+                    No ignored emails recorded yet.
+                  </p>
+                ) : (
+                  <div className="max-h-60 overflow-y-auto overscroll-contain flex flex-col gap-2 pr-0.5">
+                    {auditEntries.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="rounded-md border border-light-outline-variant/80 bg-light-surface p-2.5 flex items-start justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-label text-label-sm font-semibold text-light-on-surface truncate">
+                            {entry.subject}
+                          </p>
+                          <p className="text-[11px] font-code text-light-secondary mt-0.5">
+                            Skipped: {entry.reason} · {formatRelativeTime(entry.receivedAt)}
+                          </p>
+                        </div>
+                        {entry.restored ? (
+                          <span className="px-2 py-1 rounded-md bg-success-surface text-success text-[11px] font-label font-semibold shrink-0">
+                            Restored
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={restoringId === entry.id}
+                            onClick={() => void handleRestoreIgnored(entry.id)}
+                            className="px-2.5 py-1 rounded-md border border-light-outline-variant bg-white hover:bg-stone-50 text-[11px] font-label font-semibold text-light-on-surface flex items-center gap-1 shrink-0 disabled:opacity-50"
+                          >
+                            <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                            <span>{restoringId === entry.id ? 'Restoring...' : 'Restore'}</span>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </section>
 
         <section className="bg-white rounded-lg border border-light-outline-variant p-3.5 flex flex-col gap-3">

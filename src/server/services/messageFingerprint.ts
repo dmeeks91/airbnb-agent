@@ -16,7 +16,7 @@ function normalizeForFingerprint(value: string): string {
  * produce the same fingerprint regardless of Gmail Message-ID or line wrapping.
  */
 export function computeMessageFingerprint(
-  role: 'guest' | 'host',
+  role: 'guest' | 'host' | 'system',
   senderName: string,
   body: string,
 ): string {

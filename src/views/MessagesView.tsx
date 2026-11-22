@@ -1,9 +1,11 @@
 import {
   AlertTriangle,
-  ArrowRight,
+  CalendarCheck,
+  CalendarX,
   CheckCheck,
   ChevronDown,
   ChevronRight,
+  Clock,
   ExternalLink,
   MessageSquareText,
   SlidersHorizontal,
@@ -28,6 +30,19 @@ import { getPropertyDisplayLabel, getPropertyTheme } from '../utils/propertyHelp
 
 type StatusFilter = 'all' | 'needs_reply' | 'flagged' | 'sent';
 type StageFilter = 'all' | GuestStage;
+
+const INQUIRY_URGENCY_THRESHOLD_MS = 12 * 60 * 60 * 1000;
+
+function isThreadUrgent(thread: GuestThread, nowMs: number): boolean {
+  if (thread.stage !== 'inquiry') {
+    return false;
+  }
+  const msgMs = Date.parse(thread.lastMessageAt);
+  if (Number.isNaN(msgMs)) {
+    return false;
+  }
+  return nowMs - msgMs >= INQUIRY_URGENCY_THRESHOLD_MS;
+}
 
 export interface MessagesViewProps {
   properties: readonly Property[];
@@ -84,6 +99,7 @@ export function MessagesView({
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [dismissedUnmatchedKey, setDismissedUnmatchedKey] = useState<string | null>(null);
   const [expandedUnmatchedId, setExpandedUnmatchedId] = useState<string | null>(null);
+  const [renderNowMs] = useState(() => Date.now());
 
   const theme = getPropertyTheme(activeProperty.code);
 
@@ -437,6 +453,7 @@ export function MessagesView({
             ? recalculateDiscountAlert(thread.discountAlert, activeProperty.pricing)
             : null;
           const isFlagged = thread.status === 'flagged';
+          const isUrgent = isThreadUrgent(thread, renderNowMs);
           const defaultPayout = liveDiscountAlert
             ? liveDiscountAlert.defaultAssumption === 'all_in'
               ? liveDiscountAlert.allIn
@@ -482,7 +499,12 @@ export function MessagesView({
                       {thread.stayDates ? ` (${thread.stayDates})` : ''}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 text-light-secondary shrink-0">
+                  <div
+                    className={`flex items-center gap-1 shrink-0 ${
+                      isUrgent ? 'text-warning font-semibold' : 'text-light-secondary'
+                    }`}
+                  >
+                    {isUrgent && <Clock className="w-3.5 h-3.5" aria-hidden="true" />}
                     <span className="text-body-sm font-code">
                       {formatRelativeTime(thread.lastMessageAt)}
                     </span>
@@ -532,17 +554,6 @@ export function MessagesView({
                     </p>
                   )}
                 </div>
-
-                <div
-                  className={`flex items-center justify-between text-label-sm font-semibold ${theme.text}`}
-                >
-                  <span>
-                    {isFlagged
-                      ? 'Tap to review payout & draft counter'
-                      : 'Tap to open draft reply'}
-                  </span>
-                  <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                </div>
               </button>
 
               <div className="px-4 pl-5 py-2 border-t border-light-outline-variant/60 bg-light-surface-container-low/50 flex items-center justify-between gap-3">
@@ -568,49 +579,75 @@ export function MessagesView({
 
         {resolvedThreads.length > 0 && (
           <section aria-label="Handled conversations" className="flex flex-col gap-2">
-            {resolvedThreads.map((thread) => (
-              <button
-                key={thread.id}
-                type="button"
-                onClick={() => onOpenThread(thread.id)}
-                className="w-full text-left bg-light-surface-container-low/80 hover:bg-light-surface-container rounded-lg border border-light-outline-variant px-4 py-3 flex flex-col gap-1.5 transition"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-5 h-5 rounded-full bg-success-surface text-success flex items-center justify-center border border-green-200 shrink-0">
-                      <CheckCheck className="w-3 h-3" aria-hidden="true" />
-                    </span>
-                    <span className="font-label text-label-md font-semibold text-light-on-surface truncate">
-                      {thread.guestName}
-                      {thread.stayDates ? ` (${thread.stayDates})` : ''}
+            {resolvedThreads.map((thread) => {
+              const isCanceled = thread.reservationStatus === 'canceled';
+              const isConfirmedOnly =
+                thread.reservationStatus === 'confirmed' && !thread.lastSentPreview;
+
+              return (
+                <button
+                  key={thread.id}
+                  type="button"
+                  onClick={() => onOpenThread(thread.id)}
+                  className="w-full text-left bg-light-surface-container-low/80 hover:bg-light-surface-container rounded-lg border border-light-outline-variant px-4 py-3 flex flex-col gap-1.5 transition"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={`w-5 h-5 rounded-full flex items-center justify-center border shrink-0 ${
+                          isCanceled
+                            ? 'bg-light-surface-container text-light-outline border-light-outline-variant'
+                            : 'bg-success-surface text-success border-green-200'
+                        }`}
+                      >
+                        {isCanceled ? (
+                          <CalendarX className="w-3 h-3" aria-hidden="true" />
+                        ) : isConfirmedOnly ? (
+                          <CalendarCheck className="w-3 h-3" aria-hidden="true" />
+                        ) : (
+                          <CheckCheck className="w-3 h-3" aria-hidden="true" />
+                        )}
+                      </span>
+                      <span className="font-label text-label-md font-semibold text-light-on-surface truncate">
+                        {thread.guestName}
+                        {thread.stayDates ? ` (${thread.stayDates})` : ''}
+                      </span>
+                    </div>
+                    <span className="text-light-secondary text-[11px] font-code shrink-0">
+                      {isCanceled
+                        ? `Canceled · ${formatRelativeTime(thread.lastMessageAt)}`
+                        : isConfirmedOnly
+                          ? `Confirmed · ${formatRelativeTime(thread.lastMessageAt)}`
+                          : thread.status === 'dismissed'
+                            ? 'Handled on Airbnb'
+                            : `Sent ${formatRelativeTime(thread.lastMessageAt)}`}
                     </span>
                   </div>
-                  <span className="text-light-secondary text-[11px] font-code shrink-0">
-                    {thread.status === 'dismissed'
-                      ? 'Handled on Airbnb'
-                      : `Sent ${formatRelativeTime(thread.lastMessageAt)}`}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2 text-body-sm text-light-secondary pl-7">
-                  <p className="truncate">
-                    {thread.status === 'dismissed' ? (
-                      'Cleared without logging AI draft.'
-                    ) : (
-                      <>
-                        <span className="font-semibold text-light-on-surface">
-                          {thread.lastSentBy ?? 'Host'}:
-                        </span>{' '}
-                        &ldquo;{thread.lastSentPreview ?? thread.lastPreview}&rdquo;
-                      </>
-                    )}
-                  </p>
-                  <ChevronRight
-                    className="w-4 h-4 text-light-outline shrink-0"
-                    aria-hidden="true"
-                  />
-                </div>
-              </button>
-            ))}
+                  <div className="flex items-center justify-between gap-2 text-body-sm text-light-secondary pl-7">
+                    <p className="truncate">
+                      {isCanceled ? (
+                        thread.lastPreview || 'Reservation canceled by guest.'
+                      ) : isConfirmedOnly ? (
+                        thread.lastPreview || 'Reservation confirmed. No messages yet.'
+                      ) : thread.status === 'dismissed' ? (
+                        'Cleared without logging AI draft.'
+                      ) : (
+                        <>
+                          <span className="font-semibold text-light-on-surface">
+                            {thread.lastSentBy ?? 'Host'}:
+                          </span>{' '}
+                          &ldquo;{thread.lastSentPreview ?? thread.lastPreview}&rdquo;
+                        </>
+                      )}
+                    </p>
+                    <ChevronRight
+                      className="w-4 h-4 text-light-outline shrink-0"
+                      aria-hidden="true"
+                    />
+                  </div>
+                </button>
+              );
+            })}
           </section>
         )}
 

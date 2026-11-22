@@ -1,6 +1,12 @@
 export type GuestStage = 'inquiry' | 'confirmed' | 'current';
 
-export type EmailClassification = 'guest_message' | 'host_reply_sync' | 'ignored_noise';
+export type ReservationUpdateType = 'confirmed' | 'canceled';
+
+export type EmailClassification =
+  | 'guest_message'
+  | 'host_reply_sync'
+  | 'reservation_update'
+  | 'ignored_noise';
 
 export interface ParsedEmailMessage {
   senderName: string;
@@ -18,6 +24,7 @@ export interface ParsedAirbnbEmail {
   sentAt: string;
   airbnbTemplate: string | null;
   classification: EmailClassification;
+  reservationUpdateType?: ReservationUpdateType | null;
   needsHostReply: boolean;
   ignoreReason: string | null;
   guestName: string | null;
@@ -177,6 +184,7 @@ export interface GuestThread {
   airbnbThreadUrl: string | null;
   stage: GuestStage;
   status: ThreadStatus;
+  reservationStatus?: ReservationUpdateType | null;
   unansweredCount: number;
   lastMessageAt: string;
   lastPreview: string;
@@ -186,19 +194,37 @@ export interface GuestThread {
   activeCoachSession: ActiveCoachSession | null;
 }
 
+export interface ThreadSystemEvent {
+  type: ReservationUpdateType;
+  reservationCode: string | null;
+}
+
 export interface ThreadMessage {
   id: string;
   threadId: string;
   propertyId: string;
   gmailMessageId: string | null;
   contentFingerprint: string;
-  sender: 'guest' | 'host';
+  sender: 'guest' | 'host' | 'system';
   senderName: string;
   body: string;
   sentAt: string;
   unanswered: boolean;
   loggedManually: boolean;
   archivedCoachNotes: string[];
+  systemEvent?: ThreadSystemEvent | null;
+}
+
+export interface IgnoredEmailEntry {
+  id: string;
+  gmailMessageId: string;
+  subject: string;
+  fromAddress: string;
+  reason: string;
+  receivedAt: string;
+  bodyPreview: string;
+  rawParsed: ParsedAirbnbEmail;
+  restored: boolean;
 }
 
 export interface UnmatchedEmail {
@@ -311,6 +337,7 @@ export interface CohostDataSnapshot {
   threads: Record<string, GuestThread[]>;
   messages: Record<string, ThreadMessage[]>;
   unmatchedEmails: UnmatchedEmail[];
+  ignoredEmails?: IgnoredEmailEntry[];
   voiceProfile: VoiceProfile;
   ingestionHealth: IngestionHealth;
   userProfile: HostUserProfile;

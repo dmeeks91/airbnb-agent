@@ -37,7 +37,12 @@ export async function parseAirbnbEmailHybrid(
   const isStaticNoise =
     parsed.classification === 'ignored_noise' && parsed.ignoreReason !== 'empty_message_body';
 
-  if (!isAirbnbSender || matchedStructuredTemplate || isStaticNoise) {
+  if (
+    !isAirbnbSender ||
+    matchedStructuredTemplate ||
+    isStaticNoise ||
+    parsed.classification === 'reservation_update'
+  ) {
     return parsed;
   }
 

@@ -229,7 +229,7 @@ describe('Local dev single source of truth vs Firestore live API mode', () => {
     // Navigate to Messages and open Sarah K.'s dialogue
     await user.click(screen.getByRole('button', { name: /Messages/i }));
     expect(screen.queryByText('Discount Review: Below Min Nightly Payout')).toBeNull();
-    await user.click(screen.getByText(/Tap to open draft reply/));
+    await user.click(screen.getByText('Sarah K. (Dec 12 - 17)'));
 
     await waitFor(() => {
       expect(document.body.contains(screen.getByText('Meets Min Nightly Payout'))).toBe(true);
