@@ -68,6 +68,7 @@ export interface CohostStore {
   subscribe(listener: () => void): () => void;
   getSnapshot(): CohostDataSnapshot;
   upsertProperty(input: UpsertPropertyInput): Promise<Property>;
+  reorderProperties(orderedIds: readonly string[]): Promise<void>;
   updatePropertyPricing(propertyId: string, pricing: PropertyPricing): Promise<void>;
   updatePropertySignOff(propertyId: string, signOffOverride: string | null): Promise<void>;
   upsertVendor(propertyId: string, vendor: PropertyVendor): Promise<void>;
@@ -344,6 +345,13 @@ export class LocalCohostStore implements CohostStore {
       trimmedName,
       this.snapshot.properties.map((property) => property.id),
     );
+    const nextSortOrder = this.snapshot.properties.reduce((maxOrder, property, idx) => {
+      const candidate =
+        typeof property.sortOrder === 'number' && Number.isFinite(property.sortOrder)
+          ? property.sortOrder
+          : idx;
+      return Math.max(maxOrder, candidate);
+    }, -1) + 1;
     const created: Property = {
       id: nextId,
       name: trimmedName,
@@ -353,6 +361,7 @@ export class LocalCohostStore implements CohostStore {
       titleAliases: cleanedPrimaryTitle ? [cleanedPrimaryTitle] : [],
       signOffOverride: null,
       welcomeGuideUrl: normalizeWelcomeGuideUrl(input.welcomeGuideUrl),
+      sortOrder: nextSortOrder,
       needsReplyCount: 0,
       flaggedCount: 0,
       pricing: {
@@ -383,6 +392,40 @@ export class LocalCohostStore implements CohostStore {
     });
 
     return created;
+  }
+
+  public async reorderProperties(orderedIds: readonly string[]): Promise<void> {
+    if (this.snapshot.properties.length <= 1) {
+      return;
+    }
+    const byId = new Map(this.snapshot.properties.map((property) => [property.id, property]));
+    const seen = new Set<string>();
+    const reordered: Property[] = [];
+
+    for (const rawId of orderedIds) {
+      const property = byId.get(rawId);
+      if (property && !seen.has(property.id)) {
+        seen.add(property.id);
+        reordered.push(property);
+      }
+    }
+
+    for (const property of this.snapshot.properties) {
+      if (!seen.has(property.id)) {
+        seen.add(property.id);
+        reordered.push(property);
+      }
+    }
+
+    const nextProperties = reordered.map((property, index) => ({
+      ...property,
+      sortOrder: index,
+    }));
+
+    this.commit({
+      ...this.snapshot,
+      properties: nextProperties,
+    });
   }
 
   public async updatePropertyPricing(

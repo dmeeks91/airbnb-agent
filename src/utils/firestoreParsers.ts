@@ -244,6 +244,7 @@ export function parsePropertyDoc(
   fallbackName = 'Property',
 ): Property {
   const pricing = isRecord(data.pricing) ? data.pricing : null;
+  const sortOrder = readNullableNumber(data.sortOrder);
   return {
     id,
     name: readString(data.name, fallbackName),
@@ -253,6 +254,7 @@ export function parsePropertyDoc(
     titleAliases: readStringArray(data.titleAliases),
     signOffOverride: readNullableString(data.signOffOverride),
     welcomeGuideUrl: readNullableString(data.welcomeGuideUrl),
+    ...(sortOrder !== null ? { sortOrder } : {}),
     needsReplyCount: readNumber(data.needsReplyCount, 0),
     flaggedCount: readNumber(data.flaggedCount, 0),
     pricing: {

@@ -1,6 +1,6 @@
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { ArrowLeft, Lock, LogIn, Plus } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BottomNav } from './components/BottomNav.tsx';
 import { PropertyDetailsSheet } from './components/PropertyDetailsSheet.tsx';
 import { useProperties } from './hooks/useProperties.ts';
@@ -44,6 +44,31 @@ export interface AppProps {
   initialView?: CohostAppView;
   initialThreadId?: string | null;
   authGate?: AuthGateState;
+}
+
+const LAST_SELECTED_PROPERTY_STORAGE_KEY = 'cohost.lastSelectedPropertyId';
+
+function readPersistedPropertyId(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  try {
+    const stored = window.localStorage.getItem(LAST_SELECTED_PROPERTY_STORAGE_KEY);
+    return stored && stored.trim().length > 0 ? stored.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedPropertyId(propertyId: string): void {
+  if (typeof window === 'undefined' || !propertyId.trim()) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(LAST_SELECTED_PROPERTY_STORAGE_KEY, propertyId.trim());
+  } catch {
+    // Ignore restricted storage environments (e.g. private browsing modes).
+  }
 }
 
 function parseCohostAppView(rawView: unknown): CohostAppView | null {
@@ -106,12 +131,21 @@ export function App({
   const [liveAuthReady, setLiveAuthReady] = useState(!isLiveFirebase);
   const [liveFirebaseUser, setLiveFirebaseUser] = useState<AuthSessionIdentity | null>(null);
 
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(
-    initialPropertyId ??
-      deepLink.propertyId ??
-      activeStore.getSnapshot().properties[0]?.id ??
-      '',
-  );
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(() => {
+    if (initialPropertyId) {
+      return initialPropertyId;
+    }
+    if (deepLink.propertyId) {
+      writePersistedPropertyId(deepLink.propertyId);
+      return deepLink.propertyId;
+    }
+    return readPersistedPropertyId() ?? activeStore.getSnapshot().properties[0]?.id ?? '';
+  });
+
+  const selectProperty = useCallback((nextPropId: string) => {
+    setSelectedPropertyId(nextPropId);
+    writePersistedPropertyId(nextPropId);
+  }, []);
   const [activeView, setActiveView] = useState<CohostAppView>(
     initialView ?? deepLink.view ?? (deepLink.threadId ? 'dialogue' : 'messages'),
   );
@@ -154,7 +188,7 @@ export function App({
       const targetView = parseCohostAppView(data.view);
 
       if (targetProp) {
-        setSelectedPropertyId(targetProp);
+        selectProperty(targetProp);
       }
       if (targetThread) {
         setActiveThreadId(targetThread);
@@ -170,7 +204,7 @@ export function App({
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleSwMessage);
     };
-  }, []);
+  }, [selectProperty]);
 
   const authReady = authGate ? authGate.ready : liveAuthReady;
   const authUser = authGate ? authGate.user : liveFirebaseUser;
@@ -189,6 +223,7 @@ export function App({
     assignUnmatched,
     deleteUnmatched,
     saveProperty,
+    reorderProperties,
   } = useProperties(activeStore, selectedPropertyId);
 
   const effectivePropertyId = activeProperty?.id ?? selectedPropertyId;
@@ -382,10 +417,11 @@ export function App({
               unresolvedUnmatched={unresolvedUnmatched}
               lastSyncedLabel={lastSyncedLabel}
               onSelectProperty={(nextPropId) => {
-                setSelectedPropertyId(nextPropId);
+                selectProperty(nextPropId);
                 setActiveThreadId(null);
               }}
               onAddProperty={openAddProperty}
+              onReorderProperties={reorderProperties}
               onOpenDialogue={(threadId) => {
                 setActiveThreadId(threadId);
                 setActiveView('dialogue');
@@ -398,7 +434,7 @@ export function App({
               onDismissThread={(threadId) => dismissAsHandled(effectivePropertyId, threadId)}
               onAssignUnmatched={async (unmatchedId, targetPropertyId) => {
                 await assignUnmatched(unmatchedId, targetPropertyId);
-                setSelectedPropertyId(targetPropertyId);
+                selectProperty(targetPropertyId);
               }}
               onDeleteUnmatched={deleteUnmatched}
             />
@@ -486,10 +522,11 @@ export function App({
               otherPropertiesUnreadCount={otherPropertiesUnreadCount}
               rules={allRules}
               onSelectProperty={(nextPropId) => {
-                setSelectedPropertyId(nextPropId);
+                selectProperty(nextPropId);
                 setActiveThreadId(null);
               }}
               onAddProperty={openAddProperty}
+              onReorderProperties={reorderProperties}
               onEditProperty={openEditProperty}
               onOpenImport={() => setActiveView('import')}
               onSaveRule={async (input) => {
@@ -548,7 +585,7 @@ export function App({
         onClose={() => setIsPropertySheetOpen(false)}
         onSave={async (input) => {
           const saved = await saveProperty(input);
-          setSelectedPropertyId(saved.id);
+          selectProperty(saved.id);
           setActiveThreadId(null);
           return saved;
         }}

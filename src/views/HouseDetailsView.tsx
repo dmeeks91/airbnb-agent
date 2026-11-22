@@ -45,6 +45,7 @@ export interface HouseDetailsViewProps {
   rules: readonly HouseRule[];
   onSelectProperty: (propertyId: string) => void;
   onAddProperty: () => void;
+  onReorderProperties: (orderedIds: readonly string[]) => Promise<void>;
   onEditProperty: (property: Property) => void;
   onOpenImport: () => void;
   onSaveRule: (input: UpsertRuleInput) => Promise<void>;
@@ -223,6 +224,7 @@ export function HouseDetailsView({
   rules,
   onSelectProperty,
   onAddProperty,
+  onReorderProperties,
   onEditProperty,
   onOpenImport,
   onSaveRule,
@@ -298,6 +300,7 @@ export function HouseDetailsView({
           otherPropertiesUnreadCount={otherPropertiesUnreadCount}
           onSelectProperty={onSelectProperty}
           onAddProperty={onAddProperty}
+          onReorderProperties={onReorderProperties}
         />
       </header>
 

@@ -214,6 +214,33 @@ export function findPropertyById(
   return properties.find((property) => property.id === propertyId);
 }
 
+export function sortProperties(properties: readonly Property[]): Property[] {
+  return properties
+    .map((property, index) => ({ property, index }))
+    .sort((a, b) => {
+      const aOrder =
+        typeof a.property.sortOrder === 'number' && Number.isFinite(a.property.sortOrder)
+          ? a.property.sortOrder
+          : null;
+      const bOrder =
+        typeof b.property.sortOrder === 'number' && Number.isFinite(b.property.sortOrder)
+          ? b.property.sortOrder
+          : null;
+
+      if (aOrder !== null && bOrder !== null && aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+      if (aOrder !== null && bOrder === null) {
+        return -1;
+      }
+      if (aOrder === null && bOrder !== null) {
+        return 1;
+      }
+      return a.index - b.index;
+    })
+    .map((entry) => entry.property);
+}
+
 export function getPropertyDisplayLabel(property: Property): string {
   return property.name;
 }

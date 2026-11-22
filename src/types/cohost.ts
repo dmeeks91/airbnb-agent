@@ -133,6 +133,7 @@ export interface Property {
   titleAliases: string[];
   signOffOverride: string | null;
   welcomeGuideUrl?: string | null;
+  sortOrder?: number;
   needsReplyCount: number;
   flaggedCount: number;
   pricing: PropertyPricing;

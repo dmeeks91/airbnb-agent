@@ -8,6 +8,7 @@ import { createLocalCohostStore } from '../../services/cohostStore.ts';
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
 });
 
 describe('Stage 3: House Details, Rule Details Sheet, Import Knowledge & Account Journey', () => {

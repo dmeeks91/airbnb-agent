@@ -8,6 +8,8 @@ import { createLocalCohostStore } from '../../services/cohostStore.ts';
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
+  window.history.replaceState({}, '', '/');
 });
 
 describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Thread)', () => {
@@ -271,5 +273,58 @@ describe('Stage 2: Core Messaging Journey (Messages, Agent Dialogue, Guest Threa
         document.body.contains(screen.getByText('Handled directly in Airbnb app.')),
       ).toBe(true);
     });
+  });
+
+  it('remembers the last selected property across reloads while still honoring push deep-link URLs', async () => {
+    const user = userEvent.setup();
+    const store = createLocalCohostStore();
+
+    const firstMount = render(<App store={store} />);
+    expect(document.body.contains(screen.getByText('Coastal Loft'))).toBe(true);
+
+    // Switch to Mountain Chalet and unmount to simulate closing the PWA
+    await user.click(screen.getByRole('button', { name: 'Switch property' }));
+    await user.click(screen.getByRole('menuitemradio', { name: /Mountain Chalet/i }));
+    expect(document.body.contains(screen.getByText('Sarah K. (Dec 12 - 17)'))).toBe(true);
+    firstMount.unmount();
+
+    // Reopening the app picks up right where the user left off on Mountain Chalet
+    const secondMount = render(<App store={store} />);
+    expect(document.body.contains(screen.getByText('Mountain Chalet'))).toBe(true);
+    expect(document.body.contains(screen.getByText('Sarah K. (Dec 12 - 17)'))).toBe(true);
+    secondMount.unmount();
+
+    // Push deep-link URL still overrides the saved property on startup
+    window.history.replaceState({}, '', '/?propertyId=prop-coastal-loft');
+    render(<App store={store} />);
+    expect(document.body.contains(screen.getByText('Coastal Loft'))).toBe(true);
+    expect(document.body.contains(screen.getByText('Marcus L. (Nov 21 - 25)'))).toBe(true);
+  });
+
+  it('reorders properties from PropertySwitcher and persists the new sortOrder', async () => {
+    const user = userEvent.setup();
+    const store = createLocalCohostStore();
+
+    const mounted = render(<App store={store} />);
+    await user.click(screen.getByRole('button', { name: 'Switch property' }));
+
+    // Enter reorder mode and move Mountain Chalet above Coastal Loft
+    await user.click(screen.getByRole('button', { name: 'Reorder' }));
+    await user.click(screen.getByRole('button', { name: 'Move Mountain Chalet up' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+
+    const menuItems = screen.getAllByRole('menuitemradio');
+    expect(menuItems[0].textContent).toContain('Mountain Chalet');
+    expect(menuItems[1].textContent).toContain('Coastal Loft');
+
+    const storedProps = store.getSnapshot().properties;
+    expect(storedProps.map((p) => p.id)).toEqual(['prop-mountain-chalet', 'prop-coastal-loft']);
+    expect(storedProps.map((p) => p.sortOrder)).toEqual([0, 1]);
+
+    // Clearing localStorage and remounting now defaults to the new #1 property (Mountain Chalet)
+    mounted.unmount();
+    window.localStorage.clear();
+    render(<App store={store} />);
+    expect(document.body.contains(screen.getByText('Mountain Chalet'))).toBe(true);
   });
 });

@@ -8,22 +8,28 @@ import type { Property } from '../types/cohost.ts';
 import {
   findPropertyById,
   getOtherPropertiesUnreadCount,
+  sortProperties,
 } from '../utils/propertyHelpers.ts';
 
 export function useProperties(store: CohostStore, activePropertyId: string) {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
 
+  const orderedProperties = useMemo(
+    () => sortProperties(snapshot.properties),
+    [snapshot.properties],
+  );
+
   const activeProperty = useMemo(
-    () => findPropertyById(snapshot.properties, activePropertyId) ?? snapshot.properties[0],
-    [snapshot.properties, activePropertyId],
+    () => findPropertyById(orderedProperties, activePropertyId) ?? orderedProperties[0],
+    [orderedProperties, activePropertyId],
   );
 
   const otherPropertiesUnreadCount = useMemo(
     () =>
       activeProperty
-        ? getOtherPropertiesUnreadCount(snapshot.properties, activeProperty.id)
+        ? getOtherPropertiesUnreadCount(orderedProperties, activeProperty.id)
         : 0,
-    [snapshot.properties, activeProperty],
+    [orderedProperties, activeProperty],
   );
 
   const unresolvedUnmatched = useMemo(
@@ -33,6 +39,11 @@ export function useProperties(store: CohostStore, activePropertyId: string) {
 
   const saveProperty = useCallback(
     (input: UpsertPropertyInput): Promise<Property> => store.upsertProperty(input),
+    [store],
+  );
+
+  const reorderProperties = useCallback(
+    (orderedIds: readonly string[]): Promise<void> => store.reorderProperties(orderedIds),
     [store],
   );
 
@@ -75,7 +86,7 @@ export function useProperties(store: CohostStore, activePropertyId: string) {
   );
 
   return {
-    properties: snapshot.properties,
+    properties: orderedProperties,
     activeProperty,
     otherPropertiesUnreadCount,
     unresolvedUnmatched,
@@ -84,6 +95,7 @@ export function useProperties(store: CohostStore, activePropertyId: string) {
     userProfile: snapshot.userProfile,
     allowedEmails: snapshot.allowedEmails,
     saveProperty,
+    reorderProperties,
     assignUnmatched,
     deleteUnmatched,
   };

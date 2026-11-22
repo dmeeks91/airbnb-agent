@@ -54,6 +54,7 @@ export interface MessagesViewProps {
   lastSyncedLabel: string;
   onSelectProperty: (propertyId: string) => void;
   onAddProperty: () => void;
+  onReorderProperties: (orderedIds: readonly string[]) => Promise<void>;
   onOpenDialogue: (threadId: string) => void;
   onOpenThread: (threadId: string) => void;
   onDismissThread: (threadId: string) => Promise<void>;
@@ -87,6 +88,7 @@ export function MessagesView({
   lastSyncedLabel,
   onSelectProperty,
   onAddProperty,
+  onReorderProperties,
   onOpenDialogue,
   onOpenThread,
   onDismissThread,
@@ -224,6 +226,7 @@ export function MessagesView({
           otherPropertiesUnreadCount={otherPropertiesUnreadCount}
           onSelectProperty={onSelectProperty}
           onAddProperty={onAddProperty}
+          onReorderProperties={onReorderProperties}
         />
       </header>
 

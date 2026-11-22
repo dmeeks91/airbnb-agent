@@ -32,6 +32,7 @@ import {
   readString,
   readStringArray,
 } from '../utils/firestoreParsers.ts';
+import { sortProperties } from '../utils/propertyHelpers.ts';
 import { getFirebaseServices } from './firebase.ts';
 import {
   createLocalCohostStore,
@@ -288,10 +289,12 @@ export class FirestoreCohostStore extends LocalCohostStore {
       collection(db, 'properties'),
       (snap) => {
         const current = this.getSnapshot();
-        const nextProperties: Property[] = snap.docs.map((docSnap) => {
-          const fallback = current.properties.find((p) => p.id === docSnap.id);
-          return parsePropertyDoc(docSnap.id, docSnap.data(), fallback?.name ?? 'Property');
-        });
+        const nextProperties: Property[] = sortProperties(
+          snap.docs.map((docSnap) => {
+            const fallback = current.properties.find((p) => p.id === docSnap.id);
+            return parsePropertyDoc(docSnap.id, docSnap.data(), fallback?.name ?? 'Property');
+          }),
+        );
 
         for (const property of nextProperties) {
           this.watchPropertySubcollections(property.id);
@@ -482,6 +485,24 @@ export class FirestoreCohostStore extends LocalCohostStore {
       }
     }
     return saved;
+  }
+
+  public override async reorderProperties(orderedIds: readonly string[]): Promise<void> {
+    await super.reorderProperties(orderedIds);
+    const services = getFirebaseServices();
+    if (services) {
+      const batch = writeBatch(services.db);
+      for (const property of this.getSnapshot().properties) {
+        if (typeof property.sortOrder === 'number') {
+          batch.set(
+            doc(services.db, 'properties', property.id),
+            { sortOrder: property.sortOrder },
+            { merge: true },
+          );
+        }
+      }
+      await batch.commit();
+    }
   }
 
   public override async updatePropertyPricing(

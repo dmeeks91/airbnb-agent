@@ -9,6 +9,7 @@ import type { CoachTurnResponse, ExtractKnowledgeResponse } from '../../types/co
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   vi.restoreAllMocks();
 });
 
