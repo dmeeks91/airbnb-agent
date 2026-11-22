@@ -245,12 +245,18 @@ export function createInternalRouter(deps: InternalRoutesDeps = {}): Router {
         }
       }
 
+      const reprocessIgnored = isRecord(body) && body.reprocessIgnored === true;
+
       const labelName = process.env.GMAIL_WATCHED_LABEL?.trim() || 'Co-Host';
       const state = await repo.getIngestionState();
       const labelId = state.watchedLabelId || (await gmail.resolveLabelId(labelName));
       if (!labelId) {
         throw new Error(`Gmail label "${labelName}" not found`);
       }
+
+      const clearedIgnoredCount = reprocessIgnored
+        ? await repo.clearIgnoredProcessedEmails()
+        : 0;
 
       const summary = await runGmailBackfill(gmail, repo, {
         labelId,
@@ -270,6 +276,8 @@ export function createInternalRouter(deps: InternalRoutesDeps = {}): Router {
         ok: true,
         days,
         autoDismissOlderThanHours,
+        reprocessIgnored,
+        clearedIgnoredCount,
         ...summary,
       });
     } catch (error) {

@@ -548,6 +548,26 @@ describe('Auth middleware, OIDC verification, PushNotifier cleanup & Express API
     expect(backfillRes.status).toBe(200);
     const backfillJson: unknown = await backfillRes.json();
     expect(isRecord(backfillJson) && backfillJson.ok).toBe(true);
+    expect(isRecord(backfillJson) && backfillJson.clearedIgnoredCount).toBe(0);
+
+    // 6. Backfill with reprocessIgnored: true clears only ignored_noise records
+    await repo.recordProcessedEmail({
+      gmailMessageId: 'gm-old-ignored-1',
+      receivedAt: '2026-11-20T00:00:00.000Z',
+      classification: 'ignored_noise',
+      propertyId: null,
+      threadId: null,
+    });
+    const reprocessRes = await fetch(`${baseUrl}/api/internal/backfill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ days: 30, autoDismissOlderThanHours: 48, reprocessIgnored: true }),
+    });
+    expect(reprocessRes.status).toBe(200);
+    const reprocessJson: unknown = await reprocessRes.json();
+    expect(isRecord(reprocessJson) && reprocessJson.reprocessIgnored).toBe(true);
+    expect(isRecord(reprocessJson) && reprocessJson.clearedIgnoredCount).toBe(1);
+    expect(await repo.hasProcessedEmail('gm-old-ignored-1')).toBe(false);
     expect(isRecord(backfillJson) && backfillJson.scannedGmailMessages).toBe(1);
     expect(pushAlerts.length).toBe(alertsBeforeBackfill);
 

@@ -71,6 +71,7 @@ export interface CohostServerRepository extends IngestionStorageAdapter {
   restoreIgnoredEmail(
     ignoredId: string,
   ): Promise<{ restored: boolean; destination: 'thread' | 'unmatched' | null; threadId?: string }>;
+  clearIgnoredProcessedEmails(): Promise<number>;
   getIngestionState(): Promise<IngestionStateDoc>;
   updateIngestionState(partial: Partial<IngestionStateDoc>): Promise<void>;
   updateIngestionHealth(partial: Partial<IngestionHealth>): Promise<void>;
@@ -197,6 +198,17 @@ export class InMemoryServerRepository implements CohostServerRepository {
 
   public async recordProcessedEmail(record: ProcessedEmailRecord): Promise<void> {
     this.processed.set(record.gmailMessageId, { ...record });
+  }
+
+  public async clearIgnoredProcessedEmails(): Promise<number> {
+    let cleared = 0;
+    for (const [id, record] of this.processed.entries()) {
+      if (record.classification === 'ignored_noise') {
+        this.processed.delete(id);
+        cleared++;
+      }
+    }
+    return cleared;
   }
 
   public async recordIgnoredEmail(entry: IgnoredEmailEntry): Promise<void> {
@@ -480,6 +492,29 @@ class FirestoreServerRepository implements CohostServerRepository {
       return this.fallback.recordProcessedEmail(record);
     }
     await admin.db.doc(`processedEmails/${record.gmailMessageId}`).set(record);
+  }
+
+  public async clearIgnoredProcessedEmails(): Promise<number> {
+    const admin = getFirebaseAdminServices();
+    if (!admin) {
+      return this.fallback.clearIgnoredProcessedEmails();
+    }
+    const snap = await admin.db
+      .collection('processedEmails')
+      .where('classification', '==', 'ignored_noise')
+      .get();
+    if (snap.empty) {
+      return 0;
+    }
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < snap.docs.length; i += CHUNK_SIZE) {
+      const batch = admin.db.batch();
+      for (const docSnap of snap.docs.slice(i, i + CHUNK_SIZE)) {
+        batch.delete(docSnap.ref);
+      }
+      await batch.commit();
+    }
+    return snap.docs.length;
   }
 
   public async listProperties(): Promise<Property[]> {

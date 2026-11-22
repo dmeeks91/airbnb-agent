@@ -31,6 +31,7 @@ export interface BackfillSummary {
   extractedCandidates: number;
   ingestedGuestMessages: number;
   syncedHostReplies: number;
+  reservationUpdates: number;
   ignoredNoise: number;
   unmatched: number;
   deduped: number;
@@ -156,6 +157,7 @@ export async function runGmailBackfill(
 
   let ingestedGuestMessages = 0;
   let syncedHostReplies = 0;
+  let reservationUpdates = 0;
   let ignoredNoise = 0;
   let unmatched = 0;
   let deduped = 0;
@@ -173,6 +175,8 @@ export async function runGmailBackfill(
       });
     } else if (result.outcome === 'host_reply_synced') {
       syncedHostReplies++;
+    } else if (result.outcome === 'reservation_update_ingested') {
+      reservationUpdates++;
     } else if (result.outcome === 'ignored_noise') {
       ignoredNoise++;
     } else if (result.outcome === 'unmatched') {
@@ -209,6 +213,7 @@ export async function runGmailBackfill(
     extractedCandidates: sortedCandidates.length,
     ingestedGuestMessages,
     syncedHostReplies,
+    reservationUpdates,
     ignoredNoise,
     unmatched,
     deduped,

@@ -181,6 +181,7 @@ describe('backfillService', () => {
       extractedCandidates: 5,
       ingestedGuestMessages: 3,
       syncedHostReplies: 1,
+      reservationUpdates: 0,
       ignoredNoise: 1,
       unmatched: 0,
       deduped: 0,
